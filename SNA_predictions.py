@@ -20,8 +20,11 @@ data1 = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_panda
 data2 = parquet.read_table(input_path + '/collabTrain/date=2018-03-20').to_pandas()
 data3 = parquet.read_table(input_path + '/collabTrain/date=2018-03-19').to_pandas()
 data4 = parquet.read_table(input_path + '/collabTrain/date=2018-03-18').to_pandas()
+data5 = parquet.read_table(input_path + '/collabTrain/date=2018-03-17').to_pandas()
 
-data = pd.concat([data, data1, data2, data3, data4])
+data = pd.concat([data, data5])
+
+del [data5]
 data.head(20)
 data.info()
 data_10 = data.head(20)
@@ -44,14 +47,26 @@ X = data[[
         'auditweights_userOwner_USER_INTERNAL_UNLIKE',
         'auditweights_userOwner_VIDEO',
         'auditweights_x_ActorsRelations',
-        
         'auditweights_friendLikes',
         'auditweights_numLikes',
+        
         'userOwnerCounters_CREATE_LIKE',
         'userOwnerCounters_UNKNOWN',
         'userOwnerCounters_PHOTO_COMMENT_CREATE',
         'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
-        'userOwnerCounters_USER_INTERNAL_LIKE']].fillna(0.0).values
+        'userOwnerCounters_USER_INTERNAL_LIKE',
+        'userOwnerCounters_USER_INTERNAL_UNLIKE',
+        'userOwnerCounters_MOVIE_COMMENT_CREATE',
+        'userOwnerCounters_PHOTO_MARK_CREATE',
+         'userOwnerCounters_CREATE_TOPIC',
+         'userOwnerCounters_CREATE_IMAGE',
+         'userOwnerCounters_CREATE_MOVIE',
+         'userOwnerCounters_CREATE_COMMENT',
+         'userOwnerCounters_TEXT',
+         'userOwnerCounters_IMAGE',
+         'userOwnerCounters_VIDEO'
+         
+        ]].fillna(0.0).values
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
@@ -82,7 +97,7 @@ clf.fit(X,y)
 
 # Compute inverted predictions (to sort by later)
 test["predictions"] = -clf.predict_proba(test[[
-        'auditweights_svd_prelaunch', 
+                'auditweights_svd_prelaunch', 
         'auditweights_ctr_high', 
         'auditweights_ctr_gender', 
         'auditweights_friendLikes',
@@ -96,14 +111,24 @@ test["predictions"] = -clf.predict_proba(test[[
         'auditweights_userOwner_USER_INTERNAL_UNLIKE',
         'auditweights_userOwner_VIDEO',
         'auditweights_x_ActorsRelations',
-        
         'auditweights_friendLikes',
         'auditweights_numLikes',
+        
         'userOwnerCounters_CREATE_LIKE',
         'userOwnerCounters_UNKNOWN',
         'userOwnerCounters_PHOTO_COMMENT_CREATE',
         'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
-        'userOwnerCounters_USER_INTERNAL_LIKE']].fillna(0.0).values)[:, 1]
+        'userOwnerCounters_USER_INTERNAL_LIKE',
+        'userOwnerCounters_USER_INTERNAL_UNLIKE',
+        'userOwnerCounters_MOVIE_COMMENT_CREATE',
+        'userOwnerCounters_PHOTO_MARK_CREATE',
+         'userOwnerCounters_CREATE_TOPIC',
+         'userOwnerCounters_CREATE_IMAGE',
+         'userOwnerCounters_CREATE_MOVIE',
+         'userOwnerCounters_CREATE_COMMENT',
+         'userOwnerCounters_TEXT',
+         'userOwnerCounters_IMAGE',
+         'userOwnerCounters_VIDEO']].fillna(0.0).values)[:, 1]
 # Peek only needed columns and sort
 result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
     by=['instanceId_userId', 'predictions'])

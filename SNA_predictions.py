@@ -21,10 +21,10 @@ data2 = parquet.read_table(input_path + '/collabTrain/date=2018-03-20').to_panda
 data3 = parquet.read_table(input_path + '/collabTrain/date=2018-03-19').to_pandas()
 data4 = parquet.read_table(input_path + '/collabTrain/date=2018-03-18').to_pandas()
 data5 = parquet.read_table(input_path + '/collabTrain/date=2018-03-17').to_pandas()
+data6 = parquet.read_table(input_path + '/collabTrain/date=2018-03-16').to_pandas()
+data = pd.concat([data, data6])
 
-data = pd.concat([data, data5])
-
-del [data5]
+del [data6]
 data.head(20)
 data.info()
 data_10 = data.head(20)
@@ -33,6 +33,13 @@ y = data['feedback'].apply(lambda x: 1.0 if("Liked" in x) else 0.0).values
 
 # Extract the most interesting features
 X = data[[
+        'auditweights_partAge',
+        'auditweights_partCtr',
+        'auditweights_partSvd',
+         'auditweights_relationMasks',
+         'auditweights_source_LIVE_TOP',
+         'auditweights_source_MOVIE_TOP',
+
         'auditweights_svd_prelaunch', 
         'auditweights_ctr_high', 
         'auditweights_ctr_gender', 
@@ -40,12 +47,24 @@ X = data[[
         'auditweights_userOwner_TEXT',
         'auditweights_userOwner_CREATE_COMMENT',
         'auditweights_userOwner_CREATE_LIKE',
+         'auditweights_userOwner_MOVIE_COMMENT_CREATE',
+         'auditweights_userOwner_PHOTO_COMMENT_CREATE',
+         'auditweights_userOwner_PHOTO_MARK_CREATE',
+        
+         'auditweights_numDislikes',
+         'auditweights_numLikes',
+         'auditweights_numShows',
+
         'auditweights_userAge',
         'auditweights_userOwner_PHOTO_VIEW',
         'auditweights_userOwner_UNKNOWN',
         'auditweights_userOwner_USER_INTERNAL_LIKE',
         'auditweights_userOwner_USER_INTERNAL_UNLIKE',
+        'auditweights_userOwner_USER_PRESENT_SEND',
+        'auditweights_userOwner_USER_PROFILE_VIEW',
+
         'auditweights_userOwner_VIDEO',
+        'auditweights_userOwner_USER_FEED_REMOVE',
         'auditweights_x_ActorsRelations',
         'auditweights_friendLikes',
         'auditweights_numLikes',
@@ -97,19 +116,38 @@ clf.fit(X,y)
 
 # Compute inverted predictions (to sort by later)
 test["predictions"] = -clf.predict_proba(test[[
-                'auditweights_svd_prelaunch', 
+        'auditweights_partAge',
+        'auditweights_partCtr',
+        'auditweights_partSvd',
+         'auditweights_relationMasks',
+         'auditweights_source_LIVE_TOP',
+         'auditweights_source_MOVIE_TOP',
+
+        'auditweights_svd_prelaunch', 
         'auditweights_ctr_high', 
         'auditweights_ctr_gender', 
         'auditweights_friendLikes',
         'auditweights_userOwner_TEXT',
         'auditweights_userOwner_CREATE_COMMENT',
         'auditweights_userOwner_CREATE_LIKE',
+         'auditweights_userOwner_MOVIE_COMMENT_CREATE',
+         'auditweights_userOwner_PHOTO_COMMENT_CREATE',
+         'auditweights_userOwner_PHOTO_MARK_CREATE',
+        
+         'auditweights_numDislikes',
+         'auditweights_numLikes',
+         'auditweights_numShows',
+
         'auditweights_userAge',
         'auditweights_userOwner_PHOTO_VIEW',
         'auditweights_userOwner_UNKNOWN',
         'auditweights_userOwner_USER_INTERNAL_LIKE',
         'auditweights_userOwner_USER_INTERNAL_UNLIKE',
+        'auditweights_userOwner_USER_PRESENT_SEND',
+        'auditweights_userOwner_USER_PROFILE_VIEW',
+
         'auditweights_userOwner_VIDEO',
+        'auditweights_userOwner_USER_FEED_REMOVE',
         'auditweights_x_ActorsRelations',
         'auditweights_friendLikes',
         'auditweights_numLikes',

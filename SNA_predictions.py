@@ -9,6 +9,7 @@ import pyarrow.parquet as parquet
 # Used to train the baseline model
 from sklearn.linear_model import LogisticRegression
 import numpy as np
+import pandas as pd
 # Where the downloaded data are
 input_path = 'e:/Other/Projects/MLBC/SNAHackathon2019/'
 # Where to store results
@@ -18,7 +19,9 @@ data = parquet.read_table(input_path + '/collabTrain/date=2018-02-07').to_pandas
 data1 = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 data2 = parquet.read_table(input_path + '/collabTrain/date=2018-03-20').to_pandas()
 data3 = parquet.read_table(input_path + '/collabTrain/date=2018-03-19').to_pandas()
-data = pd.concat([data, data1, data2, data2])
+data4 = parquet.read_table(input_path + '/collabTrain/date=2018-03-18').to_pandas()
+
+data = pd.concat([data, data1, data2, data3, data4])
 data.head(20)
 data.info()
 data_10 = data.head(20)
@@ -34,11 +37,27 @@ X = data[[
         'auditweights_userOwner_TEXT',
         'auditweights_userOwner_CREATE_COMMENT',
         'auditweights_userOwner_CREATE_LIKE',
-        'auditweights_userAge']].fillna(0.0).values
+        'auditweights_userAge',
+        'auditweights_userOwner_PHOTO_VIEW',
+        'auditweights_userOwner_UNKNOWN',
+        'auditweights_userOwner_USER_INTERNAL_LIKE',
+        'auditweights_userOwner_USER_INTERNAL_UNLIKE',
+        'auditweights_userOwner_VIDEO',
+        'auditweights_x_ActorsRelations',
+        
+        'auditweights_friendLikes',
+        'auditweights_numLikes',
+        'userOwnerCounters_CREATE_LIKE',
+        'userOwnerCounters_UNKNOWN',
+        'userOwnerCounters_PHOTO_COMMENT_CREATE',
+        'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
+        'userOwnerCounters_USER_INTERNAL_LIKE']].fillna(0.0).values
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
 test.head(10)
+
+data.columns.values.tolist()
 
 from lightgbm import LGBMClassifier
 
@@ -70,7 +89,21 @@ test["predictions"] = -clf.predict_proba(test[[
         'auditweights_userOwner_TEXT',
         'auditweights_userOwner_CREATE_COMMENT',
         'auditweights_userOwner_CREATE_LIKE',
-        'auditweights_userAge']].fillna(0.0).values)[:, 1]
+        'auditweights_userAge',
+        'auditweights_userOwner_PHOTO_VIEW',
+        'auditweights_userOwner_UNKNOWN',
+        'auditweights_userOwner_USER_INTERNAL_LIKE',
+        'auditweights_userOwner_USER_INTERNAL_UNLIKE',
+        'auditweights_userOwner_VIDEO',
+        'auditweights_x_ActorsRelations',
+        
+        'auditweights_friendLikes',
+        'auditweights_numLikes',
+        'userOwnerCounters_CREATE_LIKE',
+        'userOwnerCounters_UNKNOWN',
+        'userOwnerCounters_PHOTO_COMMENT_CREATE',
+        'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
+        'userOwnerCounters_USER_INTERNAL_LIKE']].fillna(0.0).values)[:, 1]
 # Peek only needed columns and sort
 result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
     by=['instanceId_userId', 'predictions'])

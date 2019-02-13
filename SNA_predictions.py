@@ -62,7 +62,7 @@ del [data1, data2, data3, data4, data5, data6, data7]
 data.info(max_cols=170)
 data_10 = data.head(20)
 # Construct the label (liked objects)
-y = data['feedback'].apply(lambda x: 1.0 if("Liked" in x) else 0.0).values
+y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 
 data.select_dtypes(include=[object]).apply(pd.Series.nunique, axis = 0)
 
@@ -76,63 +76,9 @@ data = pd.get_dummies(data)
 ids = data[['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
 data = data.drop(columns = ['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 
-X = data.fillna(0.0).values
 
-# Extract the most interesting features
-X = data[[
-        'auditweights_partAge',
-        'auditweights_partCtr',
-        'auditweights_partSvd',
-         'auditweights_relationMasks',
-         'auditweights_source_LIVE_TOP',
-         'auditweights_source_MOVIE_TOP',
 
-        'auditweights_svd_prelaunch', 
-        'auditweights_ctr_high', 
-        'auditweights_ctr_gender', 
-        'auditweights_friendLikes',
-        'auditweights_userOwner_TEXT',
-        'auditweights_userOwner_CREATE_COMMENT',
-        'auditweights_userOwner_CREATE_LIKE',
-         'auditweights_userOwner_MOVIE_COMMENT_CREATE',
-         'auditweights_userOwner_PHOTO_COMMENT_CREATE',
-         'auditweights_userOwner_PHOTO_MARK_CREATE',
-        
-         'auditweights_numDislikes',
-         'auditweights_numLikes',
-         'auditweights_numShows',
 
-        'auditweights_userAge',
-        'auditweights_userOwner_PHOTO_VIEW',
-        'auditweights_userOwner_UNKNOWN',
-        'auditweights_userOwner_USER_INTERNAL_LIKE',
-        'auditweights_userOwner_USER_INTERNAL_UNLIKE',
-        'auditweights_userOwner_USER_PRESENT_SEND',
-        'auditweights_userOwner_USER_PROFILE_VIEW',
-
-        'auditweights_userOwner_VIDEO',
-        'auditweights_userOwner_USER_FEED_REMOVE',
-        'auditweights_x_ActorsRelations',
-        'auditweights_friendLikes',
-        'auditweights_numLikes',
-        
-        'userOwnerCounters_CREATE_LIKE',
-        'userOwnerCounters_UNKNOWN',
-        'userOwnerCounters_PHOTO_COMMENT_CREATE',
-        'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
-        'userOwnerCounters_USER_INTERNAL_LIKE',
-        'userOwnerCounters_USER_INTERNAL_UNLIKE',
-        'userOwnerCounters_MOVIE_COMMENT_CREATE',
-        'userOwnerCounters_PHOTO_MARK_CREATE',
-         'userOwnerCounters_CREATE_TOPIC',
-         'userOwnerCounters_CREATE_IMAGE',
-         'userOwnerCounters_CREATE_MOVIE',
-         'userOwnerCounters_CREATE_COMMENT',
-         'userOwnerCounters_TEXT',
-         'userOwnerCounters_IMAGE',
-         'userOwnerCounters_VIDEO'
-         
-        ]].fillna(0.0).values
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
@@ -148,13 +94,44 @@ print('Training Features shape: ', data.shape)
 print('Testing Features shape: ', test.shape)
 test.info(max_cols=210)
 
+corr_koef = data.corr()
+field_drop = [i for i in corr_koef if corr_koef[i].isnull().drop_duplicates().values[0]]
+cor_field = []
+for i in corr_koef:
+    for j in corr_koef.index[abs(corr_koef[i]) > 0.9]:
+        if i != j and j not in cor_field and i not in cor_field:
+            cor_field.append(j)
+            print ("%s-->%s: r^2=%f" % (i,j, corr_koef[i][corr_koef.index==j].values[0]))
+            
+field_drop =field_drop + cor_field
+train_list = data.columns.values.tolist() 
+test_list = test_data.columns.values.tolist() 
+for j in test_list:
+    if j not in train_list:
+        print(j)
+data = data.drop(field_drop, axis=1)
+test_data = test_data.drop(field_drop, axis=1)
 
+X = data.fillna(0.0)
+import gc
+gc.enable()
 data.columns.values.tolist()
 data.info()
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score
+folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
+
+oof_preds = np.zeros(X.shape[0])
+sub_preds = np.zeros(test.shape[0])
+
+feats = [f for f in X.columns if f not in ids]
 
 from lightgbm import LGBMClassifier
-
-clf = LGBMClassifier(
+for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
+        train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
+        val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
+        
+        clf = LGBMClassifier(
                     boosting_type = 'gbdt', 
                     n_estimators=1000, 
                     learning_rate=0.033, 
@@ -171,11 +148,46 @@ clf = LGBMClassifier(
                     random_state=546789
                     )
             
-clf.fit(X,y)
-
-# Compute inverted predictions (to sort by later)
-test["predictions"] = -clf.predict_proba(test_data.fillna(0.0).values)[:, 1]
+        clf.fit(train_x, train_y, 
+                    eval_set= [(train_x, train_y), (val_x, val_y)], 
+                    eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
+                   )
+        
+        
+        oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
+        sub_preds -= clf.predict_proba(test_data[feats].fillna(0.0).values, num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+        
+        fold_importance = pd.DataFrame()
+        fold_importance["feature"] = feats
+        fold_importance["importance"] = clf.feature_importances_
+        fold_importance["fold"] = n_fold + 1
+        
+        print('Fold %2d AUC : %.6f' % (n_fold + 1, roc_auc_score(val_y, oof_preds[val_idx])))
+        del clf, train_x, train_y, val_x, val_y
+        gc.collect()
+#clf = LGBMClassifier(
+#                    boosting_type = 'gbdt', 
+#                    n_estimators=1000, 
+#                    learning_rate=0.033, 
+#                    num_leaves=8, 
+#                    colsample_bytree=0.2, 
+#                    subsample=0.01, 
+#                    max_depth=8, 
+#                    reg_alpha=.1, 
+#                    reg_lambda=.03, 
+#                    min_split_gain=.01, 
+#                    min_child_weight=16, 
+#                    silent=-1, 
+#                    verbose=-1,
+#                    random_state=546789
+#                    )
+#            
+#clf.fit(X,y)
+#
+## Compute inverted predictions (to sort by later)
+#test["predictions"] = -clf.predict_proba(test_data.fillna(0.0).values)[:, 1]
 # Peek only needed columns and sort
+test["predictions"] = sub_preds 
 result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
     by=['instanceId_userId', 'predictions'])
 result.head(10)

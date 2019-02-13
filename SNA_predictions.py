@@ -57,28 +57,24 @@ data = pd.concat([data, data1, data2, data3, data4, data5, data6, data7, data8])
 
 feed = data['feedback']
 options = data['metadata_options']
-
+feed.head(10)
 del [data1, data2, data3, data4, data5, data6, data7]
 data.info(max_cols=170)
 data_10 = data.head(20)
 # Construct the label (liked objects)
-y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
-
-data.select_dtypes(include=[object]).apply(pd.Series.nunique, axis = 0)
+y = feed.apply(lambda x: 1.0 if("Liked" in x and not ("Disliked" in x)) else 0.0)
 
 missing = missing_values_table(data)
 missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
 data = data.drop(columns = list(missing_columns))
 data = data.drop(columns = 'metadata_options')
-data = pd.get_dummies(data)
 
 ids = data[['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
 data = data.drop(columns = ['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
+data = data.drop(columns = ['feedback'])
 
-
-
-
+data = pd.get_dummies(data)
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
@@ -103,7 +99,8 @@ for i in corr_koef:
             cor_field.append(j)
             print ("%s-->%s: r^2=%f" % (i,j, corr_koef[i][corr_koef.index==j].values[0]))
             
-field_drop =field_drop + cor_field
+#field_drop =field_drop + cor_field
+field_drop = cor_field
 train_list = data.columns.values.tolist() 
 test_list = test_data.columns.values.tolist() 
 for j in test_list:

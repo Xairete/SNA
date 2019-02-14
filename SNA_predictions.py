@@ -62,7 +62,7 @@ del [data1, data2, data3, data4, data5, data6, data7]
 data.info(max_cols=170)
 data_10 = data.head(20)
 # Construct the label (liked objects)
-y = feed.apply(lambda x: 1.0 if("Liked" in x and not ("Disliked" in x)) else 0.0)
+y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 
 missing = missing_values_table(data)
 missing_columns = list(missing[missing['% of Total Values'] > 99].index)

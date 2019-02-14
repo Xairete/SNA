@@ -42,37 +42,31 @@ def missing_values_table(df):
         # Return the dataframe with missing information
         return mis_val_table_ren_columns
 
+from datetime import date, timedelta
+oldest = date(2018,3,20)
+data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 
-
-data = parquet.read_table(input_path + '/collabTrain/date=2018-02-03').to_pandas()
-data1 = parquet.read_table(input_path + '/collabTrain/date=2018-03-03').to_pandas()
-data2 = parquet.read_table(input_path + '/collabTrain/date=2018-02-16').to_pandas()
-data3 = parquet.read_table(input_path + '/collabTrain/date=2018-03-12').to_pandas()
-data4 = parquet.read_table(input_path + '/collabTrain/date=2018-02-18').to_pandas()
-data5 = parquet.read_table(input_path + '/collabTrain/date=2018-03-18').to_pandas()
-data6 = parquet.read_table(input_path + '/collabTrain/date=2018-03-19').to_pandas()
-data7 = parquet.read_table(input_path + '/collabTrain/date=2018-03-20').to_pandas()
-data8 = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
-data = pd.concat([data, data1, data2, data3, data4, data5, data6, data7, data8])
+for i in range(15):
+    print(oldest - timedelta(i))
+    s = '/collabTrain/date='+str((oldest - timedelta(i)))
+    data1 = parquet.read_table(input_path + s).to_pandas()
+    data = pd.concat([data, data1])
 
 feed = data['feedback']
-options = data['metadata_options']
-feed.head(10)
-del [data1, data2, data3, data4, data5, data6, data7]
-data.info(max_cols=170)
-data_10 = data.head(20)
-# Construct the label (liked objects)
+
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
+
+del [data1]
+data.info(max_cols=170)
+data_20 = data.head(20)
 
 missing = missing_values_table(data)
 missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
 data = data.drop(columns = list(missing_columns))
-data = data.drop(columns = 'metadata_options')
 
-ids = data[['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
-data = data.drop(columns = ['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
-data = data.drop(columns = ['feedback'])
+ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
+data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 
 data = pd.get_dummies(data)
 # Fit the model and check the weight
@@ -81,14 +75,14 @@ test = parquet.read_table(input_path + '/collabTest').to_pandas()
 test.head(10)
 
 test_data = test.drop(columns = list(missing_columns))
-test_data = test_data.drop(columns = 'metadata_options')
-test_data = test_data.drop(columns = ['instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
+test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 test_data = test_data.drop(columns = 'date')
 test_data = pd.get_dummies(test_data)
 
 print('Training Features shape: ', data.shape)
-print('Testing Features shape: ', test.shape)
-test.info(max_cols=210)
+print('Testing Features shape: ', test_data.shape)
+data.info(max_cols=210)
+test_data.info(max_cols=210)
 
 corr_koef = data.corr()
 field_drop = [i for i in corr_koef if corr_koef[i].isnull().drop_duplicates().values[0]]
@@ -99,8 +93,8 @@ for i in corr_koef:
             cor_field.append(j)
             print ("%s-->%s: r^2=%f" % (i,j, corr_koef[i][corr_koef.index==j].values[0]))
             
-#field_drop =field_drop + cor_field
-field_drop = cor_field
+field_drop =field_drop + cor_field
+
 train_list = data.columns.values.tolist() 
 test_list = test_data.columns.values.tolist() 
 for j in test_list:
@@ -109,7 +103,8 @@ for j in test_list:
 data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 
-X = data.fillna(0.0)
+#X = data.fillna(0.0)
+X = data
 import gc
 gc.enable()
 data.columns.values.tolist()
@@ -152,8 +147,8 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         
         
         oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-        sub_preds -= clf.predict_proba(test_data[feats].fillna(0.0).values, num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
-        
+        #sub_preds -= clf.predict_proba(test_data[feats].fillna(0.0).values, num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+        sub_preds -= clf.predict_proba(test_data[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats
         fold_importance["importance"] = clf.feature_importances_

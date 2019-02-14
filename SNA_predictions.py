@@ -61,7 +61,7 @@ data.info(max_cols=170)
 data_20 = data.head(20)
 
 missing = missing_values_table(data)
-missing_columns = list(missing[missing['% of Total Values'] > 99].index)
+missing_columns = list(missing[missing['% of Total Values'] > 90].index)
 print('We will remove %d columns.' % len(missing_columns))
 data = data.drop(columns = list(missing_columns))
 
@@ -103,8 +103,7 @@ for j in test_list:
 data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 
-#X = data.fillna(0.0)
-X = data
+X = data.fillna(0.0)
 import gc
 gc.enable()
 data.columns.values.tolist()
@@ -147,8 +146,7 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         
         
         oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-        #sub_preds -= clf.predict_proba(test_data[feats].fillna(0.0).values, num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
-        sub_preds -= clf.predict_proba(test_data[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+        sub_preds -= clf.predict_proba(test_data[feats].fillna(0.0).values, num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats
         fold_importance["importance"] = clf.feature_importances_
@@ -157,24 +155,8 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         print('Fold %2d AUC : %.6f' % (n_fold + 1, roc_auc_score(val_y, oof_preds[val_idx])))
         del clf, train_x, train_y, val_x, val_y
         gc.collect()
-#clf = LGBMClassifier(
-#                    boosting_type = 'gbdt', 
-#                    n_estimators=1000, 
-#                    learning_rate=0.033, 
-#                    num_leaves=8, 
-#                    colsample_bytree=0.2, 
-#                    subsample=0.01, 
-#                    max_depth=8, 
-#                    reg_alpha=.1, 
-#                    reg_lambda=.03, 
-#                    min_split_gain=.01, 
-#                    min_child_weight=16, 
-#                    silent=-1, 
-#                    verbose=-1,
-#                    random_state=546789
-#                    )
-#            
-#clf.fit(X,y)
+
+print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))  
 #
 ## Compute inverted predictions (to sort by later)
 #test["predictions"] = -clf.predict_proba(test_data.fillna(0.0).values)[:, 1]

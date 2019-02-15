@@ -7,7 +7,6 @@ Created on Fri Feb  8 14:26:42 2019
 # Used to read the Parquet data
 import pyarrow.parquet as parquet
 # Used to train the baseline model
-from sklearn.linear_model import LogisticRegression
 import numpy as np
 import pandas as pd
 # Where the downloaded data are
@@ -42,26 +41,57 @@ def missing_values_table(df):
         # Return the dataframe with missing information
         return mis_val_table_ren_columns
 
+def auc(labels, scores):
+    if len(labels) > sum(labels) > 0:
+        return roc_auc_score(labels, scores)
+
+    return float('NaN')
+
 from datetime import date, timedelta
 oldest = date(2018,3,20)
 data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 
-for i in range(15):
+for i in range(14):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
     data = pd.concat([data, data1])
 
 feed = data['feedback']
+del data1
 
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 
-del [data1]
+data_sample = data.sample(frac = 0.10)
+head = data_sample.head(10)
+#---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
+liked = y.rename('liked').astype('Int16')
+data['liked'] = liked
+User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
+User_like_count['liked']=User_like_count['liked'].astype('Int16')
+data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
+
+Object_like_count = data[['liked','instanceId_objectId']].groupby('instanceId_objectId').count()
+Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
+data = data.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+#________________________________________________________________
+
+User_Object_count = data[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
+Object_User_count = data[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
+User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'User_Object_count'})
+Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
+data = data.join(User_Object_count, on = 'instanceId_userId')
+data = data.join(Object_User_count, on = 'instanceId_objectId')
+
+data = data.drop(columns =['liked'])
+
+head = data_sample1.head(10)
+
 data.info(max_cols=170)
 data_20 = data.head(20)
 
 missing = missing_values_table(data)
-missing_columns = list(missing[missing['% of Total Values'] > 90].index)
+missing_columns = list(missing[missing['% of Total Values'] > 95].index)
 print('We will remove %d columns.' % len(missing_columns))
 data = data.drop(columns = list(missing_columns))
 
@@ -74,7 +104,19 @@ data = pd.get_dummies(data)
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
 test.head(10)
 
+test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
+test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+
+User_Object_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
+Object_User_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
+User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'User_Object_count'})
+Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
+test = test.join(User_Object_count, on = 'instanceId_userId')
+test = test.join(Object_User_count, on = 'instanceId_objectId')
+
+
 test_data = test.drop(columns = list(missing_columns))
+ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
 test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 test_data = test_data.drop(columns = 'date')
 test_data = pd.get_dummies(test_data)
@@ -161,10 +203,29 @@ print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))
 ## Compute inverted predictions (to sort by later)
 #test["predictions"] = -clf.predict_proba(test_data.fillna(0.0).values)[:, 1]
 # Peek only needed columns and sort
+
+
+ 
+valid_data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ['instanceId_userId']).to_pandas()
+
+for i in range(14):
+    print(oldest - timedelta(i))
+    s = '/collabTrain/date='+str((oldest - timedelta(i)))
+    valid_data1 = parquet.read_table(input_path + s, columns = ['instanceId_userId']).to_pandas()
+    valid_data = pd.concat([valid_data, valid_data1])
+
+valid_data['label'] = y
+valid_data['score'] = oof_preds
+
+valid = valid_data.groupby("instanceId_userId")\
+    .apply(lambda y: auc(y.label.values, y.score.values))\
+    .dropna().mean()
+    
+    
 test["predictions"] = sub_preds 
 result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
     by=['instanceId_userId', 'predictions'])
-result.head(10)
+result.head(10)    
 # Collect predictions for each user
 submit = result.groupby("instanceId_userId")['instanceId_objectId'].apply(list)
 submit.head(10)

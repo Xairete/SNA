@@ -51,7 +51,7 @@ from datetime import date, timedelta
 oldest = date(2018,3,20)
 data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 
-for i in range(14):
+for i in range(20):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
@@ -74,6 +74,7 @@ data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), 
 Object_like_count = data[['liked','instanceId_objectId']].groupby('instanceId_objectId').count()
 Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
 data = data.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+
 #________________________________________________________________
 
 User_Object_count = data[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
@@ -82,6 +83,10 @@ User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'U
 Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
 data = data.join(User_Object_count, on = 'instanceId_userId')
 data = data.join(Object_User_count, on = 'instanceId_objectId')
+
+Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
+Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
+data = data.join(Object_like_persent, on = 'instanceId_objectId')
 
 data = data.drop(columns =['liked'])
 
@@ -113,6 +118,7 @@ User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'U
 Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
 test = test.join(User_Object_count, on = 'instanceId_userId')
 test = test.join(Object_User_count, on = 'instanceId_objectId')
+test = test.join(Object_like_persent, on = 'instanceId_objectId')
 
 
 test_data = test.drop(columns = list(missing_columns))
@@ -146,6 +152,13 @@ data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 
 X = data.fillna(0.0)
+test_data = test_data.fillna(0.0)
+
+X['labels'] = y
+X = X.drop(columns = ['labels'])
+Xsample = X.sample(frac = 0.1)
+ysample = Xsample['labels']
+
 import gc
 gc.enable()
 data.columns.values.tolist()
@@ -167,11 +180,11 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         clf = LGBMClassifier(
                     boosting_type = 'gbdt', 
                     n_estimators=1000, 
-                    learning_rate=0.033, 
-                    num_leaves=8, 
-                    colsample_bytree=0.2, 
-                    subsample=0.01, 
-                    max_depth=8, 
+                    learning_rate=0.1, 
+                    #num_leaves=8, 
+                    #colsample_bytree=0.2, 
+                    #subsample=0.01, 
+                    #max_depth=8, 
                     reg_alpha=.1, 
                     reg_lambda=.03, 
                     min_split_gain=.01, 
@@ -188,7 +201,7 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         
         
         oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-        sub_preds -= clf.predict_proba(test_data[feats].fillna(0.0).values, num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+        sub_preds -= clf.predict_proba(test_data[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats
         fold_importance["importance"] = clf.feature_importances_
@@ -208,7 +221,7 @@ print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))
  
 valid_data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ['instanceId_userId']).to_pandas()
 
-for i in range(14):
+for i in range(20):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     valid_data1 = parquet.read_table(input_path + s, columns = ['instanceId_userId']).to_pandas()

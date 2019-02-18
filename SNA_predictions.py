@@ -51,64 +51,71 @@ from datetime import date, timedelta
 oldest = date(2018,3,20)
 data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 
-for i in range(30):
+for i in range(20):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
+    day = oldest - timedelta(i)
+    dayofweek = day.weekday()
+    data1['dayofweek'] = str(dayofweek)
     data = pd.concat([data, data1])
 
 feed = data['feedback']
+data = data.drop(columns = ['feedback'])
 del data1
 
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
-
-data_sample = data.sample(frac = 0.10)
-head = data_sample.head(10)
-#---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
 data['liked'] = y.rename('liked').astype('Int16')
-User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
-User_like_count['liked']=User_like_count['liked'].astype('Int16')
-data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
 
-Object_like_count = data[['liked','instanceId_objectId']].groupby('instanceId_objectId').count()
+data_sample = data.sample(frac = 0.99, random_state = 10)
+valid_data = data_sample
+
+#---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
+
+User_like_count = data_sample[['liked','instanceId_userId']].groupby('instanceId_userId').count()
+User_like_count['liked']=User_like_count['liked'].astype('Int16')
+#data_sample = data_sample.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
+
+Object_like_count = data_sample[['liked','instanceId_objectId']].groupby('instanceId_objectId').sum()
 Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
-data = data.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+data_sample = data_sample.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
 
 #________________________________________________________________
 
-User_Object_count = data[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
-Object_User_count = data[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
+User_Object_count = data_sample[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
+Object_User_count = data_sample[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
 User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'User_Object_count'})
 Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
-data = data.join(User_Object_count, on = 'instanceId_userId')
-data = data.join(Object_User_count, on = 'instanceId_objectId')
+data_sample = data_sample.join(User_Object_count, on = 'instanceId_userId')
+data_sample = data_sample.join(Object_User_count, on = 'instanceId_objectId')
 
 Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
 Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
-data = data.join(Object_like_persent, on = 'instanceId_objectId')
+data_sample = data_sample.join(Object_like_persent, on = 'instanceId_objectId')
 
-data = data.drop(columns =['liked'])
+y_sample = data_sample['liked']
+data_sample = data_sample.drop(columns =['liked'])
 
-head = data_sample1.head(10)
 
-data.info(max_cols=170)
-data_20 = data.head(20)
-
-missing = missing_values_table(data)
+missing = missing_values_table(data_sample)
 missing_columns = list(missing[missing['% of Total Values'] > 95].index)
 print('We will remove %d columns.' % len(missing_columns))
-data = data.drop(columns = list(missing_columns))
+data_sample = data_sample.drop(columns = list(missing_columns))
 
-ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
-data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
+ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed', 'objectId']
+data_sample = data_sample.drop(columns = ids)
 
-data = pd.get_dummies(data)
+data_sample = pd.get_dummies(data_sample)
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
-test.head(10)
+test_10 = test.head(10)
+test_days = pd.to_datetime(test.date).dt.dayofweek
+test_days = test_days.apply(str)
+test['dayofweek'] = test_days
+test = test.drop(columns = 'date')
 
-test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
+#test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
 test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
 
 User_Object_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
@@ -119,19 +126,17 @@ test = test.join(User_Object_count, on = 'instanceId_userId')
 test = test.join(Object_User_count, on = 'instanceId_objectId')
 test = test.join(Object_like_persent, on = 'instanceId_objectId')
 
-
 test_data = test.drop(columns = list(missing_columns))
-ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
-test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
-test_data = test_data.drop(columns = 'date')
+
+test_data = test_data.drop(columns = ids)
 test_data = pd.get_dummies(test_data)
 
-print('Training Features shape: ', data.shape)
+print('Training Features shape: ', data_sample.shape)
 print('Testing Features shape: ', test_data.shape)
-data.info(max_cols=210)
+data_sample.info(max_cols=210)
 test_data.info(max_cols=210)
 
-corr_koef = data.corr()
+corr_koef = data_sample.corr()
 field_drop = [i for i in corr_koef if corr_koef[i].isnull().drop_duplicates().values[0]]
 cor_field = []
 for i in corr_koef:
@@ -142,26 +147,22 @@ for i in corr_koef:
             
 field_drop =field_drop + cor_field
 
-train_list = data.columns.values.tolist() 
+train_list = data_sample.columns.values.tolist() 
 test_list = test_data.columns.values.tolist() 
 for j in test_list:
     if j not in train_list:
         print(j)
-data = data.drop(field_drop, axis=1)
+data_sample = data_sample.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 
-X = data.fillna(0.0)
-test_data = test_data.fillna(0.0)
+data_sample, test_data = data_sample.align(test_data, join = 'inner', axis = 1)
 
-X['labels'] = y
-X = X.drop(columns = ['labels'])
-#Xsample = X.sample(frac = 0.1)
-#ysample = Xsample['labels']
-
+X = data_sample.fillna(data_sample.mean())
+test_data = test_data.fillna(test_data.mean())
+ 
 import gc
 gc.enable()
-data.columns.values.tolist()
-data.info()
+
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
@@ -172,9 +173,9 @@ sub_preds = np.zeros(test.shape[0])
 feats = [f for f in X.columns if f not in ids]
 
 from lightgbm import LGBMClassifier
-for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
-        train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
-        val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
+for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y_sample)):
+        train_x, train_y = X[feats].iloc[train_idx], y_sample.iloc[train_idx]
+        val_x, val_y = X[feats].iloc[val_idx], y_sample.iloc[val_idx]
         
         clf = LGBMClassifier(
                     boosting_type = 'gbdt', 
@@ -210,23 +211,9 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         del clf, train_x, train_y, val_x, val_y
         gc.collect()
 
-print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))  
+print('Full AUC score %.6f' % roc_auc_score(y_sample, oof_preds))  
 #
-## Compute inverted predictions (to sort by later)
-#test["predictions"] = -clf.predict_proba(test_data.fillna(0.0).values)[:, 1]
-# Peek only needed columns and sort
-
-
- 
-valid_data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ['instanceId_userId']).to_pandas()
-
-for i in range(30):
-    print(oldest - timedelta(i))
-    s = '/collabTrain/date='+str((oldest - timedelta(i)))
-    valid_data1 = parquet.read_table(input_path + s, columns = ['instanceId_userId']).to_pandas()
-    valid_data = pd.concat([valid_data, valid_data1])
-
-valid_data['label'] = y
+valid_data['label'] = y_sample
 valid_data['score'] = oof_preds
 
 valid = valid_data.groupby("instanceId_userId")\

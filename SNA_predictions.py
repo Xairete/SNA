@@ -51,7 +51,7 @@ from datetime import date, timedelta
 oldest = date(2018,3,20)
 data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 
-for i in range(20):
+for i in range(30):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
@@ -65,8 +65,7 @@ y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 data_sample = data.sample(frac = 0.10)
 head = data_sample.head(10)
 #---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
-liked = y.rename('liked').astype('Int16')
-data['liked'] = liked
+data['liked'] = y.rename('liked').astype('Int16')
 User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
 User_like_count['liked']=User_like_count['liked'].astype('Int16')
 data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
@@ -156,8 +155,8 @@ test_data = test_data.fillna(0.0)
 
 X['labels'] = y
 X = X.drop(columns = ['labels'])
-Xsample = X.sample(frac = 0.1)
-ysample = Xsample['labels']
+#Xsample = X.sample(frac = 0.1)
+#ysample = Xsample['labels']
 
 import gc
 gc.enable()
@@ -221,7 +220,7 @@ print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))
  
 valid_data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ['instanceId_userId']).to_pandas()
 
-for i in range(20):
+for i in range(30):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     valid_data1 = parquet.read_table(input_path + s, columns = ['instanceId_userId']).to_pandas()

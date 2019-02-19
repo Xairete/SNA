@@ -51,7 +51,7 @@ from datetime import date, timedelta
 oldest = date(2018,3,20)
 data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 
-for i in range(20):
+for i in range(18):
     print(oldest - timedelta(i))
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
@@ -67,18 +67,19 @@ del data1
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 data['liked'] = y.rename('liked').astype('Int16')
 
-data_sample = data.sample(frac = 0.99, random_state = 10)
+#data_sample = data.sample(frac = 0.1, random_state = 10)
+data_sample = data
 valid_data = data_sample
 
 #---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
 
-User_like_count = data_sample[['liked','instanceId_userId']].groupby('instanceId_userId').count()
+User_like_count = data_sample[['liked','instanceId_userId']].groupby('instanceId_userId').sum()
 User_like_count['liked']=User_like_count['liked'].astype('Int16')
 #data_sample = data_sample.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
 
 Object_like_count = data_sample[['liked','instanceId_objectId']].groupby('instanceId_objectId').sum()
 Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
-data_sample = data_sample.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+#data_sample = data_sample.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
 
 #________________________________________________________________
 
@@ -89,9 +90,12 @@ Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Obj
 data_sample = data_sample.join(User_Object_count, on = 'instanceId_userId')
 data_sample = data_sample.join(Object_User_count, on = 'instanceId_objectId')
 
-Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
-Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
-data_sample = data_sample.join(Object_like_persent, on = 'instanceId_objectId')
+#Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
+#Object_like_persent['Like_Persent'] =(Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter'])
+
+
+
+#data_sample = data_sample.join(Object_like_persent, on = 'instanceId_objectId')
 
 y_sample = data_sample['liked']
 data_sample = data_sample.drop(columns =['liked'])
@@ -116,7 +120,7 @@ test['dayofweek'] = test_days
 test = test.drop(columns = 'date')
 
 #test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
-test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+#test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
 
 User_Object_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
 Object_User_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
@@ -124,7 +128,7 @@ User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'U
 Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
 test = test.join(User_Object_count, on = 'instanceId_userId')
 test = test.join(Object_User_count, on = 'instanceId_objectId')
-test = test.join(Object_like_persent, on = 'instanceId_objectId')
+#test = test.join(Object_like_persent, on = 'instanceId_objectId')
 
 test_data = test.drop(columns = list(missing_columns))
 
@@ -157,8 +161,8 @@ test_data = test_data.drop(field_drop, axis=1)
 
 data_sample, test_data = data_sample.align(test_data, join = 'inner', axis = 1)
 
-X = data_sample.fillna(data_sample.mean())
-test_data = test_data.fillna(test_data.mean())
+X = data_sample.fillna(0.0)
+test_data = test_data.fillna(0.0)
  
 import gc
 gc.enable()

@@ -44,29 +44,33 @@ def missing_values_table(df):
 def auc(labels, scores):
     if len(labels) > sum(labels) > 0:
         return roc_auc_score(labels, scores)
-
     return float('NaN')
 
 from datetime import date, timedelta
 oldest = date(2018,3,20)
-data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
+data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
+data_sample['dayofweek'] = str(oldest.weekday)
 
 for i in range(20):
     print(oldest - timedelta(i))
+    day  = oldest - timedelta(i)
+    dayofweek = day.weekday
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
-    data = pd.concat([data, data1])
+    data1['dayofweek'] = str(dayofweek)
+    data_sample = pd.concat([data_sample, data1])
 
-feed = data['feedback']
+feed = data_sample['feedback']
 del data1
 
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
+data_sample['liked'] = y.rename('liked').astype('Int16')
 
-data_sample = data.sample(frac = 0.10)
-head = data_sample.head(10)
+data = data_sample.sample(frac = 0.10, random_state=546789)
+data = data_sample
+valid_data = data
+y = data['liked']
 #---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
-liked = y.rename('liked').astype('Int16')
-data['liked'] = liked
 User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
 User_like_count['liked']=User_like_count['liked'].astype('Int16')
 data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
@@ -89,8 +93,6 @@ Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Objec
 data = data.join(Object_like_persent, on = 'instanceId_objectId')
 
 data = data.drop(columns =['liked'])
-
-head = data_sample1.head(10)
 
 data.info(max_cols=170)
 data_20 = data.head(20)
@@ -120,11 +122,14 @@ test = test.join(User_Object_count, on = 'instanceId_userId')
 test = test.join(Object_User_count, on = 'instanceId_objectId')
 test = test.join(Object_like_persent, on = 'instanceId_objectId')
 
+test_days = pd.to_datetime(test.date).dt.dayofweek.apply(str)
+test['dayofweek'] = test_days
+test = test.drop(columns = 'date')
 
 test_data = test.drop(columns = list(missing_columns))
 ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
 test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
-test_data = test_data.drop(columns = 'date')
+
 test_data = pd.get_dummies(test_data)
 
 print('Training Features shape: ', data.shape)
@@ -154,11 +159,6 @@ test_data = test_data.drop(field_drop, axis=1)
 X = data.fillna(0.0)
 test_data = test_data.fillna(0.0)
 
-X['labels'] = y
-X = X.drop(columns = ['labels'])
-Xsample = X.sample(frac = 0.1)
-ysample = Xsample['labels']
-
 import gc
 gc.enable()
 data.columns.values.tolist()
@@ -181,10 +181,6 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
                     boosting_type = 'gbdt', 
                     n_estimators=1000, 
                     learning_rate=0.1, 
-                    #num_leaves=8, 
-                    #colsample_bytree=0.2, 
-                    #subsample=0.01, 
-                    #max_depth=8, 
                     reg_alpha=.1, 
                     reg_lambda=.03, 
                     min_split_gain=.01, 
@@ -212,20 +208,6 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         gc.collect()
 
 print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))  
-#
-## Compute inverted predictions (to sort by later)
-#test["predictions"] = -clf.predict_proba(test_data.fillna(0.0).values)[:, 1]
-# Peek only needed columns and sort
-
-
- 
-valid_data = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ['instanceId_userId']).to_pandas()
-
-for i in range(20):
-    print(oldest - timedelta(i))
-    s = '/collabTrain/date='+str((oldest - timedelta(i)))
-    valid_data1 = parquet.read_table(input_path + s, columns = ['instanceId_userId']).to_pandas()
-    valid_data = pd.concat([valid_data, valid_data1])
 
 valid_data['label'] = y
 valid_data['score'] = oof_preds

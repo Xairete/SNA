@@ -49,12 +49,13 @@ def auc(labels, scores):
 from datetime import date, timedelta
 oldest = date(2018,3,20)
 data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
-data_sample['dayofweek'] = str(oldest.weekday)
+dayofweek = oldest.weekday()
+data_sample['dayofweek'] = str(dayofweek)
 
 for i in range(20):
     print(oldest - timedelta(i))
     day  = oldest - timedelta(i)
-    dayofweek = day.weekday
+    dayofweek = day.weekday()
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
     data1['dayofweek'] = str(dayofweek)
@@ -71,13 +72,13 @@ data = data_sample
 valid_data = data
 y = data['liked']
 #---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
-User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
-User_like_count['liked']=User_like_count['liked'].astype('Int16')
-data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
-
-Object_like_count = data[['liked','instanceId_objectId']].groupby('instanceId_objectId').count()
-Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
-data = data.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+#User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
+#User_like_count['liked']=User_like_count['liked'].astype('Int16')
+#data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
+#
+#Object_like_count = data[['liked','instanceId_objectId']].groupby('instanceId_objectId').count()
+#Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
+#data = data.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
 
 #________________________________________________________________
 
@@ -88,9 +89,9 @@ Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Obj
 data = data.join(User_Object_count, on = 'instanceId_userId')
 data = data.join(Object_User_count, on = 'instanceId_objectId')
 
-Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
-Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
-data = data.join(Object_like_persent, on = 'instanceId_objectId')
+#Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
+#Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
+#data = data.join(Object_like_persent, on = 'instanceId_objectId')
 
 data = data.drop(columns =['liked'])
 
@@ -111,8 +112,8 @@ data = pd.get_dummies(data)
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
 test.head(10)
 
-test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
-test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+#test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
+#test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
 
 User_Object_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
 Object_User_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
@@ -120,7 +121,7 @@ User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'U
 Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Object_User_counter'})
 test = test.join(User_Object_count, on = 'instanceId_userId')
 test = test.join(Object_User_count, on = 'instanceId_objectId')
-test = test.join(Object_like_persent, on = 'instanceId_objectId')
+#test = test.join(Object_like_persent, on = 'instanceId_objectId')
 
 test_days = pd.to_datetime(test.date).dt.dayofweek.apply(str)
 test['dayofweek'] = test_days
@@ -158,6 +159,8 @@ test_data = test_data.drop(field_drop, axis=1)
 
 X = data.fillna(0.0)
 test_data = test_data.fillna(0.0)
+X.drop(columns = 'membership_status_R')
+X = X.drop(columns = 'membership_status_R')
 
 import gc
 gc.enable()

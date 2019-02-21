@@ -156,12 +156,18 @@ for j in test_list:
         print(j)
 data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
-
+data = data.drop(columns = 'membership_status_R')
 X = data.fillna(0.0)
 test_data = test_data.fillna(0.0)
-X.drop(columns = 'membership_status_R')
-X = X.drop(columns = 'membership_status_R')
 
+from sklearn import preprocessing
+normalized_X = preprocessing.scale(X)
+X = pd.DataFrame(normalized_X)
+X.columns = data.columns
+X.head(10)
+normalized_test_data = preprocessing.scale(test_data)
+test_data = pd.DataFrame(normalized_test_data)
+test_data.columns = data.columns
 import gc
 gc.enable()
 data.columns.values.tolist()
@@ -173,7 +179,8 @@ folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
 oof_preds = np.zeros(X.shape[0])
 sub_preds = np.zeros(test.shape[0])
 
-feats = [f for f in X.columns if f not in ids]
+feats = [f for f in data.columns if f not in ids]
+
 
 from lightgbm import LGBMClassifier
 for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
@@ -228,4 +235,23 @@ result.head(10)
 submit = result.groupby("instanceId_userId")['instanceId_objectId'].apply(list)
 submit.head(10)
 # Persist the first submit
-submit.to_csv(output_path + "/collabSubmit.csv.gz", header = False, compression='gzip')        
+submit.to_csv(output_path + "/collabSubmit.csv.gz", header = False, compression='gzip')   
+
+#from sklearn.feature_selection import RFE
+#clf = LGBMClassifier(
+#                    boosting_type = 'gbdt', 
+#                    n_estimators=1000, 
+#                    learning_rate=0.1, 
+#                    reg_alpha=.1, 
+#                    reg_lambda=.03, 
+#                    min_split_gain=.01, 
+#                    min_child_weight=16, 
+#                    silent=-1, 
+#                    verbose=-1,
+#                    random_state=546789
+#                    )
+#rfe = RFE(clf, 15)
+#rfe = rfe.fit(X, y)
+## summarize the selection of the attributes
+#print(rfe.support_)
+#print(rfe.ranking_)     

@@ -67,7 +67,7 @@ del data1
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 data_sample['liked'] = y.rename('liked').astype('Int16')
 
-data = data_sample.sample(frac = 0.10, random_state=546789)
+#data = data_sample.sample(frac = 0.20, random_state=546789)
 data = data_sample
 valid_data = data
 y = data['liked']
@@ -159,19 +159,11 @@ test_data = test_data.drop(field_drop, axis=1)
 data = data.drop(columns = 'membership_status_R')
 X = data.fillna(0.0)
 test_data = test_data.fillna(0.0)
+valid_data['label'] = y
 
-from sklearn import preprocessing
-normalized_X = preprocessing.scale(X)
-X = pd.DataFrame(normalized_X)
-X.columns = data.columns
-X.head(10)
-normalized_test_data = preprocessing.scale(test_data)
-test_data = pd.DataFrame(normalized_test_data)
-test_data.columns = data.columns
 import gc
 gc.enable()
-data.columns.values.tolist()
-data.info()
+
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
@@ -179,9 +171,22 @@ folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
 oof_preds = np.zeros(X.shape[0])
 sub_preds = np.zeros(test.shape[0])
 
-feats = [f for f in data.columns if f not in ids]
+feats = [f for f in X.columns if f not in ids]
+member_column_list = X.filter(regex='member', axis=1).columns.values.tolist() 
+owner_column_list = X.filter(regex='owner', axis=1).columns.values.tolist()
+user_column_list = X.filter(regex='user', axis=1).columns.values.tolist()
+auditweights_column_list = X.filter(regex='auditweights', axis=1).columns.values.tolist()
+other_column_list = [f for f in X.columns if f not in auditweights_column_list]
+other_column_list = [f for f in other_column_list if f not in user_column_list]
+other_column_list = [f for f in other_column_list if f not in owner_column_list]
+other_column_list = [f for f in other_column_list if f not in member_column_list]
 
+max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', 'Object_User_counter', 'audit_pos', 'User_Object_count',  'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
 
+#feats = data.columns.values.tolist() 
+feats = [f for f in X.columns if f in max_inp]
+
+from sklearn.linear_model import Ridge
 from lightgbm import LGBMClassifier
 for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
@@ -204,28 +209,35 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
                     eval_set= [(train_x, train_y), (val_x, val_y)], 
                     eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
                    )
-        
-        
         oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
+        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
+        sub_valid_data['score'] = oof_preds[val_idx]        
+        
+#        sub_valid = sub_valid_data.groupby("instanceId_userId")\
+#            .apply(lambda y: auc(y.label.values, y.score.values))\
+#            .dropna().mean()
+            
+        #print('Sub AUC : %.6f' % sub_valid)
         sub_preds -= clf.predict_proba(test_data[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats
         fold_importance["importance"] = clf.feature_importances_
         fold_importance["fold"] = n_fold + 1
         
         print('Fold %2d AUC : %.6f' % (n_fold + 1, roc_auc_score(val_y, oof_preds[val_idx])))
-        del clf, train_x, train_y, val_x, val_y
+        del  train_x, train_y, val_x, val_y, clf
         gc.collect()
 
 print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))  
 
-valid_data['label'] = y
+
 valid_data['score'] = oof_preds
 
 valid = valid_data.groupby("instanceId_userId")\
     .apply(lambda y: auc(y.label.values, y.score.values))\
     .dropna().mean()
-    
+
     
 test["predictions"] = sub_preds 
 result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
@@ -237,6 +249,12 @@ submit.head(10)
 # Persist the first submit
 submit.to_csv(output_path + "/collabSubmit.csv.gz", header = False, compression='gzip')   
 
+from sklearn.linear_model import Ridge
+ridgereg = Ridge(alpha=0.1,normalize=True)
+
+
+
+#_________________________________________________________________________
 #from sklearn.feature_selection import RFE
 #clf = LGBMClassifier(
 #                    boosting_type = 'gbdt', 
@@ -250,7 +268,7 @@ submit.to_csv(output_path + "/collabSubmit.csv.gz", header = False, compression=
 #                    verbose=-1,
 #                    random_state=546789
 #                    )
-#rfe = RFE(clf, 15)
+#rfe = RFE(clf, 5)
 #rfe = rfe.fit(X, y)
 ## summarize the selection of the attributes
 #print(rfe.support_)

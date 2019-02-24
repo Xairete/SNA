@@ -214,7 +214,8 @@ other_column_list = [f for f in other_column_list if f not in member_column_list
 best = ['metadata_ownerId', 'metadata_authorId', 'userOwnerCounters_CREATE_LIKE', 'user_birth_date', 'objectId', 'auditweights_ctr_high', 'auditweights_matrix', 'auditweights_numLikes', 'auditweights_svd_spark', 'Object_User_counter']
 
 max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', 'Object_User_counter', 'audit_pos', 'User_Object_count',  'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
-
+X = X.drop(columns = ['day'])
+test_data = test_data.drop(columns = ['day'])
 #feats = data.columns.values.tolist() 
 feats = [f for f in X.columns if f in best]
 
@@ -245,11 +246,11 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
         sub_valid_data['score'] = oof_preds[val_idx]        
         
-#        sub_valid = sub_valid_data.groupby("instanceId_userId")\
-#            .apply(lambda y: auc(y.label.values, y.score.values))\
-#            .dropna().mean()
+        sub_valid = sub_valid_data.groupby("instanceId_userId")\
+            .apply(lambda y: auc(y.label.values, y.score.values))\
+            .dropna().mean()
             
-        #print('Sub AUC : %.6f' % sub_valid)
+        print('Sub AUC : %.6f' % sub_valid)
         sub_preds -= clf.predict_proba(test_data[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
 
         fold_importance = pd.DataFrame()

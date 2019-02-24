@@ -47,18 +47,19 @@ def auc(labels, scores):
     return float('NaN')
 
 from datetime import date, timedelta
-oldest = date(2018,3,20)
+oldest = date(2018,3,21)
 data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
 dayofweek = oldest.weekday()
 data_sample['dayofweek'] = str(dayofweek)
-
-for i in range(20):
+data_sample['day'] = oldest
+for i in range(1,21):
     print(oldest - timedelta(i))
     day  = oldest - timedelta(i)
     dayofweek = day.weekday()
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
     data1 = parquet.read_table(input_path + s).to_pandas()
     data1['dayofweek'] = str(dayofweek)
+    data1['day'] = day
     data_sample = pd.concat([data_sample, data1])
 
 feed = data_sample['feedback']
@@ -71,6 +72,22 @@ data_sample['liked'] = y.rename('liked').astype('Int16')
 data = data_sample
 valid_data = data
 y = data['liked']
+
+data.info(max_cols = 172)
+data.day = pd.to_datetime(data.day)
+isweekend = pd.to_datetime(data.day).dt.dayofweek.apply(lambda x: 1.0 if(x==6 or x==5) else 0.0)
+data['isweekend'] = isweekend
+ducountlike = data[['day', 'liked']].groupby('day').sum()
+ducount = data[['day', 'instanceId_userId']].groupby('day').count()
+duunique = data[['day', 'instanceId_userId']].groupby('day').nunique()
+dudiv = duunique['instanceId_userId'].div( ducount['instanceId_userId']) 
+dulike = ducountlike['liked'].div( duunique['instanceId_userId']) 
+
+docount = data[['day', 'instanceId_objectId']].groupby('day').count()
+dounique = data[['day', 'instanceId_objectId']].groupby('day').nunique()
+dodiv = dounique['instanceId_objectId'].div( docount['instanceId_objectId']) 
+doudiv = dounique['instanceId_objectId'].div( duunique['instanceId_userId'])
+dolike = ducountlike['liked'].div( dounique['instanceId_objectId']) 
 #---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
 #User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
 #User_like_count['liked']=User_like_count['liked'].astype('Int16')
@@ -99,12 +116,13 @@ data.info(max_cols=170)
 data_20 = data.head(20)
 
 missing = missing_values_table(data)
-missing_columns = list(missing[missing['% of Total Values'] > 95].index)
+missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
 data = data.drop(columns = list(missing_columns))
 
 ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
 data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
+data.day = pd.to_datetime(data.day)
 
 data = pd.get_dummies(data)
 # Fit the model and check the weight
@@ -122,9 +140,22 @@ Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Obj
 test = test.join(User_Object_count, on = 'instanceId_userId')
 test = test.join(Object_User_count, on = 'instanceId_objectId')
 #test = test.join(Object_like_persent, on = 'instanceId_objectId')
-
+test_date = pd.to_datetime(test.date)
 test_days = pd.to_datetime(test.date).dt.dayofweek.apply(str)
 test['dayofweek'] = test_days
+test['day'] = test_date 
+isweekend = pd.to_datetime(test.day).dt.dayofweek.apply(lambda x: 1.0 if(x==6 or x==5) else 0.0)
+test['isweekend'] = isweekend
+
+testducount = test[['day', 'instanceId_userId']].groupby('day').count()
+testduunique = test[['day', 'instanceId_userId']].groupby('day').nunique()
+testdudiv = testduunique['instanceId_userId'].div( testducount['instanceId_userId']) 
+
+testdocount = test[['day', 'instanceId_objectId']].groupby('day').count()
+testdounique = test[['day', 'instanceId_objectId']].groupby('day').nunique()
+testdodiv = testdounique['instanceId_objectId'].div( testdocount['instanceId_objectId']) 
+testdoudiv = testdounique['instanceId_objectId'].div( testduunique['instanceId_userId'])
+
 test = test.drop(columns = 'date')
 
 test_data = test.drop(columns = list(missing_columns))
@@ -180,11 +211,12 @@ other_column_list = [f for f in X.columns if f not in auditweights_column_list]
 other_column_list = [f for f in other_column_list if f not in user_column_list]
 other_column_list = [f for f in other_column_list if f not in owner_column_list]
 other_column_list = [f for f in other_column_list if f not in member_column_list]
+best = ['metadata_ownerId', 'metadata_authorId', 'userOwnerCounters_CREATE_LIKE', 'user_birth_date', 'objectId', 'auditweights_ctr_high', 'auditweights_matrix', 'auditweights_numLikes', 'auditweights_svd_spark', 'Object_User_counter']
 
 max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', 'Object_User_counter', 'audit_pos', 'User_Object_count',  'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
 
 #feats = data.columns.values.tolist() 
-feats = [f for f in X.columns if f in max_inp]
+feats = [f for f in X.columns if f in best]
 
 from sklearn.linear_model import Ridge
 from lightgbm import LGBMClassifier
@@ -255,21 +287,25 @@ ridgereg = Ridge(alpha=0.1,normalize=True)
 
 
 #_________________________________________________________________________
-#from sklearn.feature_selection import RFE
-#clf = LGBMClassifier(
-#                    boosting_type = 'gbdt', 
-#                    n_estimators=1000, 
-#                    learning_rate=0.1, 
-#                    reg_alpha=.1, 
-#                    reg_lambda=.03, 
-#                    min_split_gain=.01, 
-#                    min_child_weight=16, 
-#                    silent=-1, 
-#                    verbose=-1,
-#                    random_state=546789
-#                    )
-#rfe = RFE(clf, 5)
-#rfe = rfe.fit(X, y)
-## summarize the selection of the attributes
-#print(rfe.support_)
-#print(rfe.ranking_)     
+Xtimes = X[['day']]
+X = X.drop(columns = ['day'])
+from sklearn.feature_selection.rfe import RFECV
+from lightgbm import LGBMClassifier
+clf = LGBMClassifier(
+                    boosting_type = 'gbdt', 
+                    n_estimators=1000, 
+                    learning_rate=0.1, 
+                    reg_alpha=.1, 
+                    reg_lambda=.03, 
+                    min_split_gain=.01, 
+                    min_child_weight=16, 
+                    silent=-1, 
+                    verbose=-1,
+                    random_state=546789
+                    )
+selector = RFECV(clf, step=10, cv=5, verbose = 1)
+selector.fit(X, y)
+# summarize the selection of the attributes
+print(list(selector.ranking_ ))
+print(np.asarray(X.columns)[selector.support_ ])
+ X.info()

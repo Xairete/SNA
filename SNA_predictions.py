@@ -214,10 +214,31 @@ other_column_list = [f for f in other_column_list if f not in member_column_list
 best = ['metadata_ownerId', 'metadata_authorId', 'userOwnerCounters_CREATE_LIKE', 'user_birth_date', 'objectId', 'auditweights_ctr_high', 'auditweights_matrix', 'auditweights_numLikes', 'auditweights_svd_spark', 'Object_User_counter']
 
 max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', 'Object_User_counter', 'audit_pos', 'User_Object_count',  'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
+support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata_createdAt', 'metadata_authorId', 'metadata_numPhotos', 'metadata_numPolls', 'metadata_numSymbols', 'metadata_numVideos', 'metadata_totalVideoLength', 'userOwnerCounters_USER_FEED_REMOVE', 
+                 'userOwnerCounters_UNKNOWN','userOwnerCounters_CREATE_TOPIC', 'userOwnerCounters_CREATE_COMMENT', 
+                 'userOwnerCounters_CREATE_LIKE', 'userOwnerCounters_TEXT', 'userOwnerCounters_IMAGE', 
+                 'userOwnerCounters_VIDEO', 'membership_statusUpdateDate', 'user_create_date', 'user_birth_date', 
+                 'user_gender', 'user_ID_country', 'user_ID_Location', 'user_change_datime', 
+                 'user_region', 'objectId', 'auditweights_ageMs', 'auditweights_ctr_gender',
+                 'auditweights_ctr_high', 'auditweights_ctr_negative',
+                 'auditweights_dailyRecency', 'auditweights_feedOwner_RECOMMENDED_GROUP',
+                 'auditweights_feedStats', 'auditweights_friendLikes',
+                 'auditweights_likersFeedStats_hyper',
+                 'auditweights_likersSvd_prelaunch_hyper', 'auditweights_matrix',
+                 'auditweights_numDislikes', 'auditweights_numLikes',
+                 'auditweights_numShows', 'auditweights_svd_prelaunch',
+                 'auditweights_svd_spark', 'auditweights_userOwner_CREATE_COMMENT',
+                 'auditweights_userOwner_CREATE_LIKE', 'auditweights_userOwner_IMAGE',
+                 'auditweights_userOwner_TEXT', 'auditweights_userOwner_USER_FEED_REMOVE',
+                 'auditweights_x_ActorsRelations', 'auditweights_likersSvd_spark_hyper',
+                 'User_Object_count', 'Object_User_counter', 'audit_clientType_API',
+                 'audit_clientType_MOB', 'audit_clientType_WEB',
+                 'metadata_ownerType_GROUP_OPEN', 'metadata_platform_ANDROID',
+                 'metadata_platform_OTHER', 'metadata_platform_WEB', 'membership_status_A']
 X = X.drop(columns = ['day'])
 test_data = test_data.drop(columns = ['day'])
 #feats = data.columns.values.tolist() 
-feats = [f for f in X.columns if f in best]
+feats = [f for f in X.columns if f in support_feats]
 
 from sklearn.linear_model import Ridge
 from lightgbm import LGBMClassifier
@@ -307,6 +328,6 @@ clf = LGBMClassifier(
 selector = RFECV(clf, step=10, cv=5, verbose = 1)
 selector.fit(X, y)
 # summarize the selection of the attributes
-print(list(selector.ranking_ ))
-print(np.asarray(X.columns)[selector.support_ ])
+print(list(selector.ranking_ )
+support = np.asarray(X.columns)[selector.support_ ]
  X.info()

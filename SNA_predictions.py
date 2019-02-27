@@ -88,6 +88,15 @@ dounique = data[['day', 'instanceId_objectId']].groupby('day').nunique()
 dodiv = dounique['instanceId_objectId'].div( docount['instanceId_objectId']) 
 doudiv = dounique['instanceId_objectId'].div( duunique['instanceId_userId'])
 dolike = ducountlike['liked'].div( dounique['instanceId_objectId']) 
+
+concatdata = data_sample["instanceId_userId"].apply(str) +'_'+ data_sample["instanceId_objectId"].apply(str)
+uniqdata = concatdata.unique()
+from collections import Counter
+nonuniquedata = Counter(concatdata)
+numnonuniq = nonuniquedata.most_common(20)
+
+nudata_sample = data_sample[data_sample['instanceId_userId'] == 9063906]
+
 #---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
 #User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
 #User_like_count['liked']=User_like_count['liked'].astype('Int16')
@@ -164,6 +173,12 @@ test_data = test_data.drop(columns = ['audit_experiment','metadata_options','ins
 
 test_data = pd.get_dummies(test_data)
 
+concattest = test["instanceId_userId"].apply(str) + test["instanceId_objectId"].apply(str)
+uniq = concattest.unique()
+from collections import Counter
+nonunique = Counter(concattest)
+nunnonuniq = nonunique.most_common(558)
+
 print('Training Features shape: ', data.shape)
 print('Testing Features shape: ', test_data.shape)
 data.info(max_cols=210)
@@ -188,8 +203,10 @@ for j in test_list:
 data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 data = data.drop(columns = 'membership_status_R')
+#X = data.fillna(0.0)
+#T = test_data.fillna(0.0)
 X = data.fillna(0.0)
-test_data = test_data.fillna(0.0)
+T = test_data.fillna(0.0)
 valid_data['label'] = y
 
 import gc
@@ -199,8 +216,6 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
 
-oof_preds = np.zeros(X.shape[0])
-sub_preds = np.zeros(test.shape[0])
 
 feats = [f for f in X.columns if f not in ids]
 member_column_list = X.filter(regex='member', axis=1).columns.values.tolist() 
@@ -213,8 +228,13 @@ other_column_list = [f for f in other_column_list if f not in owner_column_list]
 other_column_list = [f for f in other_column_list if f not in member_column_list]
 best = ['metadata_ownerId', 'metadata_authorId', 'userOwnerCounters_CREATE_LIKE', 'user_birth_date', 'objectId', 'auditweights_ctr_high', 'auditweights_matrix', 'auditweights_numLikes', 'auditweights_svd_spark', 'Object_User_counter']
 
-max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', 'Object_User_counter', 'audit_pos', 'User_Object_count',  'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
-support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata_createdAt', 'metadata_authorId', 'metadata_numPhotos', 'metadata_numPolls', 'metadata_numSymbols', 'metadata_numVideos', 'metadata_totalVideoLength', 'userOwnerCounters_USER_FEED_REMOVE', 
+max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', 'Object_User_counter', 'audit_pos', 'User_Object_count',  
+           'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  
+           'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  
+           'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
+support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata_createdAt', 'metadata_authorId', 
+                 'metadata_numPhotos', 'metadata_numPolls', 'metadata_numSymbols', 'metadata_numVideos', 'metadata_totalVideoLength', 
+                 'userOwnerCounters_USER_FEED_REMOVE', 
                  'userOwnerCounters_UNKNOWN','userOwnerCounters_CREATE_TOPIC', 'userOwnerCounters_CREATE_COMMENT', 
                  'userOwnerCounters_CREATE_LIKE', 'userOwnerCounters_TEXT', 'userOwnerCounters_IMAGE', 
                  'userOwnerCounters_VIDEO', 'membership_statusUpdateDate', 'user_create_date', 'user_birth_date', 
@@ -236,43 +256,61 @@ support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata
                  'metadata_ownerType_GROUP_OPEN', 'metadata_platform_ANDROID',
                  'metadata_platform_OTHER', 'metadata_platform_WEB', 'membership_status_A']
 X = X.drop(columns = ['day'])
-test_data = test_data.drop(columns = ['day'])
+T = T.drop(columns = ['day'])
 #feats = data.columns.values.tolist() 
 feats = [f for f in X.columns if f in support_feats]
+oof_preds = np.zeros(X.shape[0])
+sub_preds = np.zeros(test.shape[0])
 
 from sklearn.linear_model import Ridge
 from lightgbm import LGBMClassifier
+from catboost import CatBoostClassifier, Pool
+
 for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
         val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
-        
-        clf = LGBMClassifier(
-                    boosting_type = 'gbdt', 
-                    n_estimators=1000, 
-                    learning_rate=0.1, 
-                    reg_alpha=.1, 
-                    reg_lambda=.03, 
-                    min_split_gain=.01, 
-                    min_child_weight=16, 
-                    silent=-1, 
-                    verbose=-1,
-                    random_state=546789
-                    )
-            
+
+#        clf = LGBMClassifier(
+#                    boosting_type = 'gbdt', 
+#                    n_estimators=1000, 
+#                    learning_rate=0.1, 
+#                    reg_alpha=.1, 
+#                    reg_lambda=.03, 
+#                    min_split_gain=.01, 
+#                    min_child_weight=16, 
+#                    silent=-1, 
+#                    verbose=-1,
+#                    random_state=546789
+#                    )
+#        clf.fit(train_x, train_y, 
+#                    eval_set= [(train_x, train_y), (val_x, val_y)], 
+#                    eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
+#                   )
+        clf = CatBoostClassifier( 
+                           n_estimators=1000,
+                           learning_rate=0.1, 
+                           loss_function='Logloss', 
+                           logging_level='Verbose',
+                           custom_metric='AUC:hints=skip_train~false', 
+                           metric_period=20,
+                           early_stopping_rounds=30,
+                           random_seed=546789)
         clf.fit(train_x, train_y, 
-                    eval_set= [(train_x, train_y), (val_x, val_y)], 
-                    eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
+                    eval_set= [(train_x, train_y), (val_x, val_y)],
+                    verbose=100, early_stopping_rounds=30  #30
                    )
-        oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
-        sub_valid_data['score'] = oof_preds[val_idx]        
-        
-        sub_valid = sub_valid_data.groupby("instanceId_userId")\
-            .apply(lambda y: auc(y.label.values, y.score.values))\
-            .dropna().mean()
+        oof_preds[val_idx] = clf.predict_proba(val_x)[:, 1]
+        sub_preds -= clf.predict_proba(T[feats])[:, 1] / folds.n_splits
+#        oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
+#        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
+#        sub_valid_data['score'] = oof_preds[val_idx]        
+#        
+#        sub_valid = sub_valid_data.groupby("instanceId_userId")\
+#            .apply(lambda y: auc(y.label.values, y.score.values))\
+#            .dropna().mean()
             
-        print('Sub AUC : %.6f' % sub_valid)
-        sub_preds -= clf.predict_proba(test_data[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+#        print('Sub AUC : %.6f' % sub_valid)
+        #sub_preds -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
 
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats
@@ -292,12 +330,12 @@ valid = valid_data.groupby("instanceId_userId")\
     .apply(lambda y: auc(y.label.values, y.score.values))\
     .dropna().mean()
 
-    
 test["predictions"] = sub_preds 
 result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
     by=['instanceId_userId', 'predictions'])
 result.head(10)    
 # Collect predictions for each user
+
 submit = result.groupby("instanceId_userId")['instanceId_objectId'].apply(list)
 submit.head(10)
 # Persist the first submit
@@ -325,9 +363,9 @@ clf = LGBMClassifier(
                     verbose=-1,
                     random_state=546789
                     )
-selector = RFECV(clf, step=10, cv=5, verbose = 1)
+selector = RFECV(clf, step=5, cv=5, verbose = 1)
 selector.fit(X, y)
 # summarize the selection of the attributes
 print(list(selector.ranking_ )
 support = np.asarray(X.columns)[selector.support_ ]
- X.info()
+X.info()

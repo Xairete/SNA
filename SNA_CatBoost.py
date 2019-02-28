@@ -133,7 +133,7 @@ ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instance
 data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 data.day = pd.to_datetime(data.day)
 
-data = pd.get_dummies(data)
+#data = pd.get_dummies(data)
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest').to_pandas()
@@ -171,7 +171,7 @@ test_data = test.drop(columns = list(missing_columns))
 ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
 test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 
-test_data = pd.get_dummies(test_data)
+#test_data = pd.get_dummies(test_data)
 
 concattest = test["instanceId_userId"].apply(str) + test["instanceId_objectId"].apply(str)
 uniq = concattest.unique()
@@ -203,12 +203,16 @@ for j in test_list:
 data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 data = data.drop(columns = 'membership_status_R')
+data = data.drop(columns = 'label')
 #X = data.fillna(0.0)
 #T = test_data.fillna(0.0)
 X = data.fillna(0.0)
 T = test_data.fillna(0.0)
 valid_data['label'] = y
-
+X = X.drop(columns = ['day'])
+T = T.drop(columns = ['day'])
+categorical_features = list(data.select_dtypes(include=['object']).columns)
+categorical_features_idx = [X.columns.get_loc(c) for c in categorical_features if c in X]
 import gc
 gc.enable()
 
@@ -216,8 +220,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
 
-
 feats = [f for f in X.columns if f not in ids]
+
 member_column_list = X.filter(regex='member', axis=1).columns.values.tolist() 
 owner_column_list = X.filter(regex='owner', axis=1).columns.values.tolist()
 user_column_list = X.filter(regex='user', axis=1).columns.values.tolist()
@@ -255,10 +259,9 @@ support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata
                  'audit_clientType_MOB', 'audit_clientType_WEB',
                  'metadata_ownerType_GROUP_OPEN', 'metadata_platform_ANDROID',
                  'metadata_platform_OTHER', 'metadata_platform_WEB', 'membership_status_A']
-X = X.drop(columns = ['day'])
-T = T.drop(columns = ['day'])
+
 #feats = data.columns.values.tolist() 
-feats = [f for f in X.columns if f in support_feats]
+#feats = [f for f in X.columns if f in support_feats]
 oof_preds = np.zeros(X.shape[0])
 sub_preds = np.zeros(test.shape[0])
 
@@ -288,29 +291,31 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
 #                   )
         clf = CatBoostClassifier( 
                            n_estimators=1000,
-                           learning_rate=0.1, 
+                           learning_rate=0.2, 
                            loss_function='Logloss', 
                            logging_level='Verbose',
                            custom_metric='AUC:hints=skip_train~false', 
                            metric_period=20,
                            early_stopping_rounds=30,
+                           cat_features = categorical_features_idx,
                            random_seed=546789)
         clf.fit(train_x, train_y, 
                     eval_set= [(train_x, train_y), (val_x, val_y)],
+                    cat_features = categorical_features_idx,
                     verbose=100, early_stopping_rounds=30  #30
                    )
         oof_preds[val_idx] = clf.predict_proba(val_x)[:, 1]
         sub_preds -= clf.predict_proba(T[feats])[:, 1] / folds.n_splits
 #        oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-#        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
-#        sub_valid_data['score'] = oof_preds[val_idx]        
-#        
-#        sub_valid = sub_valid_data.groupby("instanceId_userId")\
-#            .apply(lambda y: auc(y.label.values, y.score.values))\
-#            .dropna().mean()
+        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
+        sub_valid_data['score'] = oof_preds[val_idx]        
+        
+        sub_valid = sub_valid_data.groupby("instanceId_userId")\
+            .apply(lambda y: auc(y.label.values, y.score.values))\
+            .dropna().mean()
             
-#        print('Sub AUC : %.6f' % sub_valid)
-        #sub_preds -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+        print('Sub AUC : %.6f' % sub_valid)
+#        sub_preds -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
 
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats

@@ -77,6 +77,7 @@ data.info(max_cols = 172)
 data.day = pd.to_datetime(data.day)
 isweekend = pd.to_datetime(data.day).dt.dayofweek.apply(lambda x: 1.0 if(x==6 or x==5) else 0.0)
 data['isweekend'] = isweekend
+
 ducountlike = data[['day', 'liked']].groupby('day').sum()
 ducount = data[['day', 'instanceId_userId']].groupby('day').count()
 duunique = data[['day', 'instanceId_userId']].groupby('day').nunique()
@@ -127,8 +128,29 @@ data_20 = data.head(20)
 missing = missing_values_table(data)
 missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
+
 data = data.drop(columns = list(missing_columns))
 
+missing_columns = ['relationsMask', 'ownerUserCounters_PHOTO_PIN_UPDATE','owner_is_activated',
+         'owner_is_abused','owner_is_deleted', 'owner_is_active', 'owner_ID_Location',  'owner_ID_country',  'owner_status',
+         'owner_gender', 'owner_birth_date', 'owner_create_date', 'ownerUserCounters_VIDEO', 'ownerUserCounters_IMAGE', 'ownerUserCounters_TEXT',
+         'ownerUserCounters_CREATE_LIKE', 'ownerUserCounters_CREATE_COMMENT', 'ownerUserCounters_CREATE_MOVIE', 'ownerUserCounters_CREATE_IMAGE', 'ownerUserCounters_CREATE_TOPIC',
+         'ownerUserCounters_UNKNOWN', 'owner_change_datime', 'owner_is_semiactivated', 'auditweights_closed', 'auditweights_userOwner_USER_DELETE_MESSAGE',
+         'auditweights_userOwner_VOTE_POLL', 'auditweights_userOwner_USER_STATUS_COMMENT_CREATE', 'auditweights_userOwner_USER_SEND_MESSAGE',
+         'auditweights_userOwner_USER_PROFILE_VIEW', 'auditweights_userOwner_USER_PRESENT_SEND', 'auditweights_userOwner_USER_INTERNAL_UNLIKE',
+         'auditweights_userOwner_USER_INTERNAL_LIKE', 'auditweights_userOwner_USER_FORUM_MESSAGE_CREATE', 'auditweights_userOwner_PHOTO_VIEW',
+         'auditweights_isPymk', 'auditweights_userOwner_PHOTO_MARK_CREATE', 'auditweights_userOwner_PHOTO_COMMENT_CREATE',
+         'auditweights_userOwner_MOVIE_COMMENT_CREATE', 'auditweights_source_LIVE_TOP', 'auditweights_relationMasks',
+         'auditweights_partSvd', 'auditweights_partCtr', 'auditweights_partAge', 'ownerUserCounters_USER_PRESENT_SEND', 'owner_region',
+         'ownerUserCounters_PHOTO_PIN_BATCH_CREATE', 'ownerUserCounters_USER_INTERNAL_UNLIKE', 'ownerUserCounters_PHOTO_VIEW',
+         'ownerUserCounters_USER_FEED_REMOVE', 'ownerUserCounters_USER_PROFILE_VIEW', 'ownerUserCounters_VOTE_POLL',
+         'ownerUserCounters_USER_SEND_MESSAGE', 'ownerUserCounters_USER_DELETE_MESSAGE', 'ownerUserCounters_USER_INTERNAL_LIKE',
+         'auditweights_source_PROMO', 'ownerUserCounters_PHOTO_MARK_CREATE', 'ownerUserCounters_USER_STATUS_COMMENT_CREATE',
+         'ownerUserCounters_PHOTO_COMMENT_CREATE', 'ownerUserCounters_MOVIE_COMMENT_CREATE', 'ownerUserCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
+         'ownerUserCounters_COMMENT_INTERNAL_LIKE', 'ownerUserCounters_USER_FORUM_MESSAGE_CREATE', 'auditweights_hasDetectedText',
+         'auditweights_source_MOVIE_TOP', 'auditweights_userOwner_CREATE_IMAGE', 'auditweights_onlineVideo', 'auditweights_userOwner_VIDEO',
+         'auditweights_friendCommentFeeds', 'auditweights_friendCommenters', 'auditweights_userOwner_UNKNOWN']
+data = data.drop(columns = missing_columns)
 ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
 data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 data.day = pd.to_datetime(data.day)
@@ -168,6 +190,7 @@ testdoudiv = testdounique['instanceId_objectId'].div( testduunique['instanceId_u
 test = test.drop(columns = 'date')
 
 test_data = test.drop(columns = list(missing_columns))
+test_data = test.drop(columns = missing_columns)
 ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
 test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 
@@ -194,7 +217,33 @@ for i in corr_koef:
             print ("%s-->%s: r^2=%f" % (i,j, corr_koef[i][corr_koef.index==j].values[0]))
             
 field_drop =field_drop + cor_field
-
+field_drop = ['metadata_applicationId',
+ 'userOwnerCounters_USER_PROFILE_VIEW',
+ 'userOwnerCounters_VOTE_POLL',
+ 'userOwnerCounters_USER_SEND_MESSAGE',
+ 'userOwnerCounters_USER_DELETE_MESSAGE',
+ 'userOwnerCounters_USER_INTERNAL_LIKE',
+ 'userOwnerCounters_USER_INTERNAL_UNLIKE',
+ 'userOwnerCounters_USER_STATUS_COMMENT_CREATE',
+ 'userOwnerCounters_PHOTO_COMMENT_CREATE',
+ 'userOwnerCounters_MOVIE_COMMENT_CREATE',
+ 'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
+ 'userOwnerCounters_COMMENT_INTERNAL_LIKE',
+ 'userOwnerCounters_USER_FORUM_MESSAGE_CREATE',
+ 'userOwnerCounters_PHOTO_MARK_CREATE',
+ 'userOwnerCounters_PHOTO_VIEW',
+ 'userOwnerCounters_PHOTO_PIN_BATCH_CREATE',
+ 'userOwnerCounters_PHOTO_PIN_UPDATE',
+ 'userOwnerCounters_USER_PRESENT_SEND',
+ 'auditweights_hasText',
+ 'auditweights_isRandom',
+ 'auditweights_notOriginalPhoto',
+ 'auditweights_processedVideo',
+ 'metadata_numTokens',
+ 'membership_joinDate',
+ 'membership_joinRequestDate',
+ 'auditweights_userAge',
+ 'metadata_ownerType_GROUP_OPEN_OFFICIAL']
 train_list = data.columns.values.tolist() 
 test_list = test_data.columns.values.tolist() 
 for j in test_list:
@@ -203,12 +252,32 @@ for j in test_list:
 data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 data = data.drop(columns = 'membership_status_R')
-#X = data.fillna(0.0)
-#T = test_data.fillna(0.0)
+
+data['label'] = y
+corr = data.corr().ix['label', :-1]
+import matplotlib.pyplot as plt
+plt.hist(data['auditweights_svd_prelaunch'].fillna(-1), 20)
+plt.hist(data['auditweights_svd_spark'].fillna(-1), 20)
+plt.hist(matrix, 50)
+matrix =  np.log(data['auditweights_matrix']+1)
+plt.hist(test_data['auditweights_svd_prelaunch'], 20)
+
+multy_data = data['auditweights_svd_prelaunch'].fillna(1)*data['auditweights_svd_spark'].fillna(1)*data['auditweights_matrix'].fillna(1)
+plt.hist(multy_data, 20)
+multy = pd.concat([multy_data, data['label']], axis=1)
+t =pd.concat([data['auditweights_svd_spark'], data.label], axis = 1).corr()
+st = pd.concat([data['auditweights_svd_spark'], data['auditweights_svd_prelaunch'], data['auditweights_matrix'], data.label], axis = 1)
+
+
+
+
+
 X = data.fillna(0.0)
 T = test_data.fillna(0.0)
+#X = data
+#T = test_data
 valid_data['label'] = y
-
+X = X.drop('label')
 import gc
 gc.enable()
 
@@ -260,57 +329,41 @@ T = T.drop(columns = ['day'])
 #feats = data.columns.values.tolist() 
 feats = [f for f in X.columns if f in support_feats]
 oof_preds = np.zeros(X.shape[0])
-sub_preds = np.zeros(test.shape[0])
+sub_preds = np.zeros(T.shape[0])
 
 from sklearn.linear_model import Ridge
 from lightgbm import LGBMClassifier
-from catboost import CatBoostClassifier, Pool
 
 for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
         val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
 
-#        clf = LGBMClassifier(
-#                    boosting_type = 'gbdt', 
-#                    n_estimators=1000, 
-#                    learning_rate=0.1, 
-#                    reg_alpha=.1, 
-#                    reg_lambda=.03, 
-#                    min_split_gain=.01, 
-#                    min_child_weight=16, 
-#                    silent=-1, 
-#                    verbose=-1,
-#                    random_state=546789
-#                    )
-#        clf.fit(train_x, train_y, 
-#                    eval_set= [(train_x, train_y), (val_x, val_y)], 
-#                    eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
-#                   )
-        clf = CatBoostClassifier( 
-                           n_estimators=1000,
-                           learning_rate=0.1, 
-                           loss_function='Logloss', 
-                           logging_level='Verbose',
-                           custom_metric='AUC:hints=skip_train~false', 
-                           metric_period=20,
-                           early_stopping_rounds=30,
-                           random_seed=546789)
+        clf = LGBMClassifier(
+                    boosting_type = 'gbdt', 
+                    n_estimators=1000, 
+                    learning_rate=0.1, 
+                    reg_alpha=.1, 
+                    reg_lambda=.03, 
+                    min_split_gain=.01, 
+                    min_child_weight=16, 
+                    silent=-1, 
+                    verbose=-1,
+                    random_state=546789
+                    )
         clf.fit(train_x, train_y, 
-                    eval_set= [(train_x, train_y), (val_x, val_y)],
-                    verbose=100, early_stopping_rounds=30  #30
+                    eval_set= [(train_x, train_y), (val_x, val_y)], 
+                    eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
                    )
-        oof_preds[val_idx] = clf.predict_proba(val_x)[:, 1]
-        sub_preds -= clf.predict_proba(T[feats])[:, 1] / folds.n_splits
-#        oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-#        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
-#        sub_valid_data['score'] = oof_preds[val_idx]        
-#        
-#        sub_valid = sub_valid_data.groupby("instanceId_userId")\
-#            .apply(lambda y: auc(y.label.values, y.score.values))\
-#            .dropna().mean()
+        oof_preds[val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
+        sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
+        sub_valid_data['score'] = oof_preds[val_idx]        
+        
+        sub_valid = sub_valid_data.groupby("instanceId_userId")\
+            .apply(lambda y: auc(y.label.values, y.score.values))\
+            .dropna().mean()
             
-#        print('Sub AUC : %.6f' % sub_valid)
-        #sub_preds -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+        print('Sub AUC : %.6f' % sub_valid)
+        sub_preds -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
 
         fold_importance = pd.DataFrame()
         fold_importance["feature"] = feats
@@ -331,8 +384,52 @@ valid = valid_data.groupby("instanceId_userId")\
     .dropna().mean()
 
 test["predictions"] = sub_preds 
-result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
-    by=['instanceId_userId', 'predictions'])
+
+
+
+oldest = date(2018,3,21)
+data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ["instanceId_userId", "instanceId_objectId", 'feedback']).to_pandas()
+dayofweek = oldest.weekday()
+data_sample['dayofweek'] = str(dayofweek)
+data_sample['day'] = oldest
+for i in range(1,48):
+    print(oldest - timedelta(i))
+    day  = oldest - timedelta(i)
+    dayofweek = day.weekday()
+    if str((oldest - timedelta(i))) != '2018-02-11':
+        s = '/collabTrain/date='+str((oldest - timedelta(i)))
+        data1 = parquet.read_table(input_path + s, columns = ["instanceId_userId", "instanceId_objectId", 'feedback']).to_pandas()
+        data1['dayofweek'] = str(dayofweek)
+        data1['day'] = day
+        data_sample = pd.concat([data_sample, data1])
+
+feed = data_sample['feedback']
+del data1
+
+y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
+data_sample['liked'] = y.rename('liked').astype('Int16')
+
+#data = data_sample.sample(frac = 0.20, random_state=546789)
+data = data_sample
+
+concatdata = data["instanceId_userId"].apply(str) +'_'+ data["instanceId_objectId"].apply(str)
+concattest = test["instanceId_userId"].apply(str) +'_'+ test["instanceId_objectId"].apply(str)
+d = pd.Series(list(set(concatdata) & set(concattest)))
+data['concatdata'] = concatdata
+test['concattest'] = concattest
+data_concat = (data[['concatdata', 'liked']].groupby('concatdata').median())
+test1 = test[['concattest',"predictions"]]
+w = test1.join(data_concat, how='left', on='concattest')
+w.liked.fillna(w.predictions, inplace=True)
+
+test['liked'] = w['liked'].apply(lambda x: -1.0 if (x == 1.0) else x )
+
+#result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
+#    by=['instanceId_userId', 'predictions'])
+
+result = test[["instanceId_userId", "instanceId_objectId", "liked"]].sort_values(
+    by=['instanceId_userId', 'liked'])
+
 result.head(10)    
 # Collect predictions for each user
 
@@ -344,11 +441,12 @@ submit.to_csv(output_path + "/collabSubmit.csv.gz", header = False, compression=
 from sklearn.linear_model import Ridge
 ridgereg = Ridge(alpha=0.1,normalize=True)
 
-
-
+del data_sample
+del data
 #_________________________________________________________________________
 Xtimes = X[['day']]
 X = X.drop(columns = ['day'])
+
 from sklearn.feature_selection.rfe import RFECV
 from lightgbm import LGBMClassifier
 clf = LGBMClassifier(

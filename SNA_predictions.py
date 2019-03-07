@@ -46,9 +46,71 @@ def auc(labels, scores):
         return roc_auc_score(labels, scores)
     return float('NaN')
 
-from datetime import date, timedelta
+import gc
+gc.enable()
+
+all_list = ['instanceId_userId', 'instanceId_objectType', 'instanceId_objectId', 'audit_pos', 'audit_clientType', 'audit_timestamp', 'audit_timePassed',
+         'audit_experiment', 'audit_resourceType', 'metadata_ownerId', 'metadata_ownerType', 'metadata_createdAt', 'metadata_authorId', 'metadata_applicationId',
+         'metadata_numCompanions', 'metadata_numPhotos', 'metadata_numPolls', 'metadata_numSymbols', 'metadata_numTokens', 'metadata_numVideos', 'metadata_platform',
+         'metadata_totalVideoLength', 'metadata_options', 'relationsMask', 'userOwnerCounters_USER_FEED_REMOVE', 'userOwnerCounters_USER_PROFILE_VIEW',
+         'userOwnerCounters_VOTE_POLL', 'userOwnerCounters_USER_SEND_MESSAGE', 'userOwnerCounters_USER_DELETE_MESSAGE', 'userOwnerCounters_USER_INTERNAL_LIKE',
+         'userOwnerCounters_USER_INTERNAL_UNLIKE', 'userOwnerCounters_USER_STATUS_COMMENT_CREATE', 'userOwnerCounters_PHOTO_COMMENT_CREATE', 'userOwnerCounters_MOVIE_COMMENT_CREATE',
+         'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE', 'userOwnerCounters_COMMENT_INTERNAL_LIKE', 'userOwnerCounters_USER_FORUM_MESSAGE_CREATE',
+         'userOwnerCounters_PHOTO_MARK_CREATE', 'userOwnerCounters_PHOTO_VIEW', 'userOwnerCounters_PHOTO_PIN_BATCH_CREATE', 'userOwnerCounters_PHOTO_PIN_UPDATE',
+         'userOwnerCounters_USER_PRESENT_SEND', 'userOwnerCounters_UNKNOWN', 'userOwnerCounters_CREATE_TOPIC', 'userOwnerCounters_CREATE_IMAGE',
+         'userOwnerCounters_CREATE_MOVIE', 'userOwnerCounters_CREATE_COMMENT', 'userOwnerCounters_CREATE_LIKE', 'userOwnerCounters_TEXT', 'userOwnerCounters_IMAGE',
+         'userOwnerCounters_VIDEO', 'ownerUserCounters_USER_FEED_REMOVE', 'ownerUserCounters_USER_PROFILE_VIEW', 'ownerUserCounters_VOTE_POLL', 'ownerUserCounters_USER_SEND_MESSAGE',
+         'ownerUserCounters_USER_DELETE_MESSAGE', 'ownerUserCounters_USER_INTERNAL_LIKE', 'ownerUserCounters_USER_INTERNAL_UNLIKE', 'ownerUserCounters_USER_STATUS_COMMENT_CREATE',
+         'ownerUserCounters_PHOTO_COMMENT_CREATE', 'ownerUserCounters_MOVIE_COMMENT_CREATE', 'ownerUserCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
+         'ownerUserCounters_COMMENT_INTERNAL_LIKE', 'ownerUserCounters_USER_FORUM_MESSAGE_CREATE', 'ownerUserCounters_PHOTO_MARK_CREATE', 'ownerUserCounters_PHOTO_VIEW',
+         'ownerUserCounters_PHOTO_PIN_BATCH_CREATE', 'ownerUserCounters_PHOTO_PIN_UPDATE', 'ownerUserCounters_USER_PRESENT_SEND', 'ownerUserCounters_UNKNOWN',
+         'ownerUserCounters_CREATE_TOPIC', 'ownerUserCounters_CREATE_IMAGE', 'ownerUserCounters_CREATE_MOVIE', 'ownerUserCounters_CREATE_COMMENT',
+         'ownerUserCounters_CREATE_LIKE', 'ownerUserCounters_TEXT', 'ownerUserCounters_IMAGE', 'ownerUserCounters_VIDEO', 'membership_status', 'membership_statusUpdateDate',
+         'membership_joinDate', 'membership_joinRequestDate', 'owner_create_date', 'owner_birth_date', 'owner_gender', 'owner_status', 'owner_ID_country',
+         'owner_ID_Location', 'owner_is_active', 'owner_is_deleted', 'owner_is_abused', 'owner_is_activated', 'owner_change_datime', 'owner_is_semiactivated',
+         'owner_region', 'user_create_date', 'user_birth_date', 'user_gender', 'user_status', 'user_ID_country', 'user_ID_Location', 'user_is_active',
+         'user_is_deleted', 'user_is_abused', 'user_is_activated', 'user_change_datime', 'user_is_semiactivated', 'user_region', 'feedback', 'objectId',
+         'auditweights_ageMs', 'auditweights_closed', 'auditweights_ctr_gender', 'auditweights_ctr_high', 'auditweights_ctr_negative', 'auditweights_dailyRecency',
+         'auditweights_feedOwner_RECOMMENDED_GROUP', 'auditweights_feedStats', 'auditweights_friendCommentFeeds', 'auditweights_friendCommenters',
+         'auditweights_friendLikes', 'auditweights_friendLikes_actors', 'auditweights_hasDetectedText', 'auditweights_hasText', 'auditweights_isPymk',
+         'auditweights_isRandom', 'auditweights_likersFeedStats_hyper', 'auditweights_likersSvd_prelaunch_hyper', 'auditweights_matrix',
+         'auditweights_notOriginalPhoto', 'auditweights_numDislikes', 'auditweights_numLikes', 'auditweights_numShows', 'auditweights_onlineVideo',
+         'auditweights_partAge', 'auditweights_partCtr', 'auditweights_partSvd', 'auditweights_processedVideo', 'auditweights_relationMasks',
+         'auditweights_source_LIVE_TOP', 'auditweights_source_MOVIE_TOP', 'auditweights_svd_prelaunch', 'auditweights_svd_spark', 'auditweights_userAge',
+         'auditweights_userOwner_CREATE_COMMENT', 'auditweights_userOwner_CREATE_IMAGE', 'auditweights_userOwner_CREATE_LIKE', 'auditweights_userOwner_IMAGE',
+         'auditweights_userOwner_MOVIE_COMMENT_CREATE', 'auditweights_userOwner_PHOTO_COMMENT_CREATE', 'auditweights_userOwner_PHOTO_MARK_CREATE',
+         'auditweights_userOwner_PHOTO_VIEW', 'auditweights_userOwner_TEXT', 'auditweights_userOwner_UNKNOWN', 'auditweights_userOwner_USER_DELETE_MESSAGE',
+         'auditweights_userOwner_USER_FEED_REMOVE', 'auditweights_userOwner_USER_FORUM_MESSAGE_CREATE', 'auditweights_userOwner_USER_INTERNAL_LIKE',
+         'auditweights_userOwner_USER_INTERNAL_UNLIKE', 'auditweights_userOwner_USER_PRESENT_SEND', 'auditweights_userOwner_USER_PROFILE_VIEW',
+         'auditweights_userOwner_USER_SEND_MESSAGE', 'auditweights_userOwner_USER_STATUS_COMMENT_CREATE', 'auditweights_userOwner_VIDEO', 'auditweights_userOwner_VOTE_POLL',
+         'auditweights_x_ActorsRelations', 'auditweights_likersSvd_spark_hyper', 'auditweights_source_PROMO']
+
+missing_columns = ['relationsMask', 'ownerUserCounters_PHOTO_PIN_UPDATE','owner_is_activated',
+         'owner_is_abused','owner_is_deleted', 'owner_is_active', 'owner_ID_Location',  'owner_ID_country',  'owner_status',
+         'owner_gender', 'owner_birth_date', 'owner_create_date', 'ownerUserCounters_VIDEO', 'ownerUserCounters_IMAGE', 'ownerUserCounters_TEXT',
+         'ownerUserCounters_CREATE_LIKE', 'ownerUserCounters_CREATE_COMMENT', 'ownerUserCounters_CREATE_MOVIE', 'ownerUserCounters_CREATE_IMAGE', 'ownerUserCounters_CREATE_TOPIC',
+         'ownerUserCounters_UNKNOWN', 'owner_change_datime', 'owner_is_semiactivated', 'auditweights_closed', 'auditweights_userOwner_USER_DELETE_MESSAGE',
+         'auditweights_userOwner_VOTE_POLL', 'auditweights_userOwner_USER_STATUS_COMMENT_CREATE', 'auditweights_userOwner_USER_SEND_MESSAGE',
+         'auditweights_userOwner_USER_PROFILE_VIEW', 'auditweights_userOwner_USER_PRESENT_SEND', 'auditweights_userOwner_USER_INTERNAL_UNLIKE',
+         'auditweights_userOwner_USER_INTERNAL_LIKE', 'auditweights_userOwner_USER_FORUM_MESSAGE_CREATE', 'auditweights_userOwner_PHOTO_VIEW',
+         'auditweights_isPymk', 'auditweights_userOwner_PHOTO_MARK_CREATE', 'auditweights_userOwner_PHOTO_COMMENT_CREATE',
+         'auditweights_userOwner_MOVIE_COMMENT_CREATE', 'auditweights_source_LIVE_TOP', 'auditweights_relationMasks',
+         'auditweights_partSvd', 'auditweights_partCtr', 'auditweights_partAge', 'ownerUserCounters_USER_PRESENT_SEND', 'owner_region',
+         'ownerUserCounters_PHOTO_PIN_BATCH_CREATE', 'ownerUserCounters_USER_INTERNAL_UNLIKE', 'ownerUserCounters_PHOTO_VIEW',
+         'ownerUserCounters_USER_FEED_REMOVE', 'ownerUserCounters_USER_PROFILE_VIEW', 'ownerUserCounters_VOTE_POLL',
+         'ownerUserCounters_USER_SEND_MESSAGE', 'ownerUserCounters_USER_DELETE_MESSAGE', 'ownerUserCounters_USER_INTERNAL_LIKE',
+         'auditweights_source_PROMO', 'ownerUserCounters_PHOTO_MARK_CREATE', 'ownerUserCounters_USER_STATUS_COMMENT_CREATE',
+         'ownerUserCounters_PHOTO_COMMENT_CREATE', 'ownerUserCounters_MOVIE_COMMENT_CREATE', 'ownerUserCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
+         'ownerUserCounters_COMMENT_INTERNAL_LIKE', 'ownerUserCounters_USER_FORUM_MESSAGE_CREATE', 'auditweights_hasDetectedText',
+         'auditweights_source_MOVIE_TOP', 'auditweights_userOwner_CREATE_IMAGE', 'auditweights_onlineVideo', 'auditweights_userOwner_VIDEO',
+         'auditweights_friendCommentFeeds', 'auditweights_friendCommenters', 'auditweights_userOwner_UNKNOWN']
+
+select_list = list(set(all_list) - set(missing_columns)) 
+
+from datetime import date, timedelta, time
 oldest = date(2018,3,21)
-data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21').to_pandas()
+data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = select_list).to_pandas()
+   
 dayofweek = oldest.weekday()
 data_sample['dayofweek'] = str(dayofweek)
 data_sample['day'] = oldest
@@ -57,21 +119,21 @@ for i in range(1,21):
     day  = oldest - timedelta(i)
     dayofweek = day.weekday()
     s = '/collabTrain/date='+str((oldest - timedelta(i)))
-    data1 = parquet.read_table(input_path + s).to_pandas()
+    data1 = parquet.read_table(input_path + s, columns = select_list).to_pandas()
     data1['dayofweek'] = str(dayofweek)
     data1['day'] = day
     data_sample = pd.concat([data_sample, data1])
+    del data1
 
 feed = data_sample['feedback']
-del data1
 
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
-data_sample['liked'] = y.rename('liked').astype('Int16')
+['liked'] = y.rename('liked').astype('Int16')
 
-#data = data_sample.sample(frac = 0.20, random_state=546789)
+data = data_sample.sample(frac = 0.20, random_state=546789)
 data = data_sample
 valid_data = data
-y = data['liked']
+y_all = data['liked']
 
 data.info(max_cols = 172)
 data.day = pd.to_datetime(data.day)
@@ -116,6 +178,8 @@ Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Obj
 data = data.join(User_Object_count, on = 'instanceId_userId')
 data = data.join(Object_User_count, on = 'instanceId_objectId')
 
+#data = data.drop(columns =['User_Object_count'])
+
 #Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
 #Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
 #data = data.join(Object_like_persent, on = 'instanceId_objectId')
@@ -130,40 +194,16 @@ missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
 
 data = data.drop(columns = list(missing_columns))
-
-missing_columns = ['relationsMask', 'ownerUserCounters_PHOTO_PIN_UPDATE','owner_is_activated',
-         'owner_is_abused','owner_is_deleted', 'owner_is_active', 'owner_ID_Location',  'owner_ID_country',  'owner_status',
-         'owner_gender', 'owner_birth_date', 'owner_create_date', 'ownerUserCounters_VIDEO', 'ownerUserCounters_IMAGE', 'ownerUserCounters_TEXT',
-         'ownerUserCounters_CREATE_LIKE', 'ownerUserCounters_CREATE_COMMENT', 'ownerUserCounters_CREATE_MOVIE', 'ownerUserCounters_CREATE_IMAGE', 'ownerUserCounters_CREATE_TOPIC',
-         'ownerUserCounters_UNKNOWN', 'owner_change_datime', 'owner_is_semiactivated', 'auditweights_closed', 'auditweights_userOwner_USER_DELETE_MESSAGE',
-         'auditweights_userOwner_VOTE_POLL', 'auditweights_userOwner_USER_STATUS_COMMENT_CREATE', 'auditweights_userOwner_USER_SEND_MESSAGE',
-         'auditweights_userOwner_USER_PROFILE_VIEW', 'auditweights_userOwner_USER_PRESENT_SEND', 'auditweights_userOwner_USER_INTERNAL_UNLIKE',
-         'auditweights_userOwner_USER_INTERNAL_LIKE', 'auditweights_userOwner_USER_FORUM_MESSAGE_CREATE', 'auditweights_userOwner_PHOTO_VIEW',
-         'auditweights_isPymk', 'auditweights_userOwner_PHOTO_MARK_CREATE', 'auditweights_userOwner_PHOTO_COMMENT_CREATE',
-         'auditweights_userOwner_MOVIE_COMMENT_CREATE', 'auditweights_source_LIVE_TOP', 'auditweights_relationMasks',
-         'auditweights_partSvd', 'auditweights_partCtr', 'auditweights_partAge', 'ownerUserCounters_USER_PRESENT_SEND', 'owner_region',
-         'ownerUserCounters_PHOTO_PIN_BATCH_CREATE', 'ownerUserCounters_USER_INTERNAL_UNLIKE', 'ownerUserCounters_PHOTO_VIEW',
-         'ownerUserCounters_USER_FEED_REMOVE', 'ownerUserCounters_USER_PROFILE_VIEW', 'ownerUserCounters_VOTE_POLL',
-         'ownerUserCounters_USER_SEND_MESSAGE', 'ownerUserCounters_USER_DELETE_MESSAGE', 'ownerUserCounters_USER_INTERNAL_LIKE',
-         'auditweights_source_PROMO', 'ownerUserCounters_PHOTO_MARK_CREATE', 'ownerUserCounters_USER_STATUS_COMMENT_CREATE',
-         'ownerUserCounters_PHOTO_COMMENT_CREATE', 'ownerUserCounters_MOVIE_COMMENT_CREATE', 'ownerUserCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
-         'ownerUserCounters_COMMENT_INTERNAL_LIKE', 'ownerUserCounters_USER_FORUM_MESSAGE_CREATE', 'auditweights_hasDetectedText',
-         'auditweights_source_MOVIE_TOP', 'auditweights_userOwner_CREATE_IMAGE', 'auditweights_onlineVideo', 'auditweights_userOwner_VIDEO',
-         'auditweights_friendCommentFeeds', 'auditweights_friendCommenters', 'auditweights_userOwner_UNKNOWN']
-data = data.drop(columns = missing_columns)
-ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
-data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
-data.day = pd.to_datetime(data.day)
-
+#ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
+#data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
+#data.metadata_createdAt = pd.to_datetime(data.metadata_createdAt, unit='ms')
 data = pd.get_dummies(data)
 # Fit the model and check the weight
 # Read the test data
-test = parquet.read_table(input_path + '/collabTest').to_pandas()
+test = parquet.read_table(input_path + '/collabTest', columns = list(set(select_list)|set(['date']))).to_pandas()
 test.head(10)
-
 #test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
 #test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
-
 User_Object_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
 Object_User_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
 User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'User_Object_count'})
@@ -188,10 +228,10 @@ testdodiv = testdounique['instanceId_objectId'].div( testdocount['instanceId_obj
 testdoudiv = testdounique['instanceId_objectId'].div( testduunique['instanceId_userId'])
 
 test = test.drop(columns = 'date')
+test.metadata_createdAt = pd.to_datetime(test.metadata_createdAt, unit='ms')
+test_data = test #.drop(columns = list(missing_columns))
 
-test_data = test.drop(columns = list(missing_columns))
-test_data = test.drop(columns = missing_columns)
-ids = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
+ids_list = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
 test_data = test_data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
 
 test_data = pd.get_dummies(test_data)
@@ -217,33 +257,15 @@ for i in corr_koef:
             print ("%s-->%s: r^2=%f" % (i,j, corr_koef[i][corr_koef.index==j].values[0]))
             
 field_drop =field_drop + cor_field
-field_drop = ['metadata_applicationId',
- 'userOwnerCounters_USER_PROFILE_VIEW',
- 'userOwnerCounters_VOTE_POLL',
- 'userOwnerCounters_USER_SEND_MESSAGE',
- 'userOwnerCounters_USER_DELETE_MESSAGE',
- 'userOwnerCounters_USER_INTERNAL_LIKE',
- 'userOwnerCounters_USER_INTERNAL_UNLIKE',
- 'userOwnerCounters_USER_STATUS_COMMENT_CREATE',
- 'userOwnerCounters_PHOTO_COMMENT_CREATE',
- 'userOwnerCounters_MOVIE_COMMENT_CREATE',
- 'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE',
- 'userOwnerCounters_COMMENT_INTERNAL_LIKE',
- 'userOwnerCounters_USER_FORUM_MESSAGE_CREATE',
- 'userOwnerCounters_PHOTO_MARK_CREATE',
- 'userOwnerCounters_PHOTO_VIEW',
- 'userOwnerCounters_PHOTO_PIN_BATCH_CREATE',
- 'userOwnerCounters_PHOTO_PIN_UPDATE',
- 'userOwnerCounters_USER_PRESENT_SEND',
- 'auditweights_hasText',
- 'auditweights_isRandom',
- 'auditweights_notOriginalPhoto',
- 'auditweights_processedVideo',
- 'metadata_numTokens',
- 'membership_joinDate',
- 'membership_joinRequestDate',
- 'auditweights_userAge',
- 'metadata_ownerType_GROUP_OPEN_OFFICIAL']
+field_drop = ['metadata_applicationId', 'userOwnerCounters_USER_PROFILE_VIEW', 'userOwnerCounters_VOTE_POLL', 'userOwnerCounters_USER_SEND_MESSAGE',
+ 'userOwnerCounters_USER_DELETE_MESSAGE', 'userOwnerCounters_USER_INTERNAL_LIKE', 'userOwnerCounters_USER_INTERNAL_UNLIKE',
+ 'userOwnerCounters_USER_STATUS_COMMENT_CREATE', 'userOwnerCounters_PHOTO_COMMENT_CREATE', 'userOwnerCounters_MOVIE_COMMENT_CREATE',
+ 'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE', 'userOwnerCounters_COMMENT_INTERNAL_LIKE',
+ 'userOwnerCounters_USER_FORUM_MESSAGE_CREATE', 'userOwnerCounters_PHOTO_MARK_CREATE',
+ 'userOwnerCounters_PHOTO_VIEW', 'userOwnerCounters_PHOTO_PIN_BATCH_CREATE', 'userOwnerCounters_PHOTO_PIN_UPDATE', 'userOwnerCounters_USER_PRESENT_SEND', 'auditweights_hasText',
+ 'auditweights_isRandom', 'auditweights_notOriginalPhoto', 'auditweights_processedVideo',
+ 'metadata_numTokens', 'membership_joinDate', 'membership_joinRequestDate',
+ 'auditweights_userAge', 'metadata_ownerType_GROUP_OPEN_OFFICIAL']
 train_list = data.columns.values.tolist() 
 test_list = test_data.columns.values.tolist() 
 for j in test_list:
@@ -253,7 +275,6 @@ data = data.drop(field_drop, axis=1)
 test_data = test_data.drop(field_drop, axis=1)
 data = data.drop(columns = 'membership_status_R')
 
-data['label'] = y
 corr = data.corr().ix['label', :-1]
 import matplotlib.pyplot as plt
 plt.hist(data['auditweights_svd_prelaunch'].fillna(-1), 20)
@@ -268,23 +289,33 @@ multy = pd.concat([multy_data, data['label']], axis=1)
 t =pd.concat([data['auditweights_svd_spark'], data.label], axis = 1).corr()
 st = pd.concat([data['auditweights_svd_spark'], data['auditweights_svd_prelaunch'], data['auditweights_matrix'], data.label], axis = 1)
 
+data['label'] = y_all
+data['instanceId_userId'] = data_sample['instanceId_userId']
+data['instanceId_objectId'] = data_sample['instanceId_objectId']
 
+Xfilt = data.loc[~(data['userOwnerCounters_VIDEO'] > 1000)]
+Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_IMAGE'] > 21000)]
+Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_TEXT'] > 12500)]
+Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_COMMENT'] > 10000)]
+Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_TOPIC'] > 2000)]
+Xfilt =Xfilt.loc[~(Xfilt['auditweights_ctr_high'] < 0)]
+Xfilt =Xfilt.loc[~(Xfilt['auditweights_likersSvd_spark_hyper']>3)]
+Xfilt =Xfilt.loc[~(Xfilt['metadata_numPhotos'] > 150)]
+Xfilt =Xfilt.loc[~(Xfilt['metadata_totalVideoLength'] > 60000000)]
+Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_USER_FEED_REMOVE'] > 15000)]
+Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_LIKE'] > 8000)]
 
+import seaborn as sns
+boxplot = data.hist(column=[ 'auditweights_likersSvd_spark_hyper'])
 
-
-X = data.fillna(0.0)
+X = Xfilt.fillna(0.0)
 T = test_data.fillna(0.0)
+
 #X = data
 #T = test_data
-valid_data['label'] = y
+valid_data = X
+y = X['label']
 X = X.drop('label')
-import gc
-gc.enable()
-
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
-folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
-
 
 feats = [f for f in X.columns if f not in ids]
 member_column_list = X.filter(regex='member', axis=1).columns.values.tolist() 
@@ -301,7 +332,7 @@ max_inp = ['metadata_authorId',  'metadata_createdAt',  'metadata_numSymbols', '
            'userOwnerCounters_CREATE_LIKE',  'user_birth_date',  'user_create_date',  
            'user_change_datime', 'user_ID_Location', 'auditweights_ageMs',  'auditweights_ctr_gender',  
            'auditweights_ctr_high',  'auditweights_matrix',  'auditweights_numLikes',  'auditweights_ctr_negative', 'auditweights_svd_spark']
-support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata_createdAt', 'metadata_authorId', 
+support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata_authorId' , 'metadata_createdAt',
                  'metadata_numPhotos', 'metadata_numPolls', 'metadata_numSymbols', 'metadata_numVideos', 'metadata_totalVideoLength', 
                  'userOwnerCounters_USER_FEED_REMOVE', 
                  'userOwnerCounters_UNKNOWN','userOwnerCounters_CREATE_TOPIC', 'userOwnerCounters_CREATE_COMMENT', 
@@ -324,16 +355,20 @@ support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata
                  'audit_clientType_MOB', 'audit_clientType_WEB',
                  'metadata_ownerType_GROUP_OPEN', 'metadata_platform_ANDROID',
                  'metadata_platform_OTHER', 'metadata_platform_WEB', 'membership_status_A']
-X = X.drop(columns = ['day'])
-T = T.drop(columns = ['day'])
+X = X.drop(columns = ['day', 'metadata_createdAt'])
+
+import time
+T = T.drop(columns = ['day', 'metadata_createdAt'])
 #feats = data.columns.values.tolist() 
 feats = [f for f in X.columns if f in support_feats]
 oof_preds = np.zeros(X.shape[0])
 sub_preds = np.zeros(T.shape[0])
-
+sub_valid = 0 
 from sklearn.linear_model import Ridge
 from lightgbm import LGBMClassifier
-
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score
+folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
 for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
         val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
@@ -358,11 +393,11 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
         sub_valid_data['score'] = oof_preds[val_idx]        
         
-        sub_valid = sub_valid_data.groupby("instanceId_userId")\
+        sub_valid += sub_valid_data.groupby("instanceId_userId")\
             .apply(lambda y: auc(y.label.values, y.score.values))\
             .dropna().mean()
             
-        print('Sub AUC : %.6f' % sub_valid)
+        #print('Sub AUC : %.6f' % sub_valid)
         sub_preds -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
 
         fold_importance = pd.DataFrame()
@@ -375,7 +410,7 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
         gc.collect()
 
 print('Full AUC score %.6f' % roc_auc_score(y, oof_preds))  
-
+print('Full AUC score %.6f' % (sub_valid/5))  
 
 valid_data['score'] = oof_preds
 
@@ -385,8 +420,11 @@ valid = valid_data.groupby("instanceId_userId")\
 
 test["predictions"] = sub_preds 
 
-
-
+result = test[["instanceId_userId", "instanceId_objectId", "predictions"]].sort_values(
+    by=['instanceId_userId', "predictions"])
+submit = result.groupby("instanceId_userId")['instanceId_objectId'].apply(list)
+submit.to_csv(output_path + "/before_replace_collabSubmit.csv.gz", header = False, compression='gzip')  
+#_______________________________________________________________________________
 oldest = date(2018,3,21)
 data_sample = parquet.read_table(input_path + '/collabTrain/date=2018-03-21', columns = ["instanceId_userId", "instanceId_objectId", 'feedback']).to_pandas()
 dayofweek = oldest.weekday()
@@ -396,7 +434,7 @@ for i in range(1,48):
     print(oldest - timedelta(i))
     day  = oldest - timedelta(i)
     dayofweek = day.weekday()
-    if str((oldest - timedelta(i))) != '2018-02-11':
+    if (str((oldest - timedelta(i))) != '2018-02-11')&(str((oldest - timedelta(i))) != '2018-02-17')&(str((oldest - timedelta(i))) != '2018-02-18'):
         s = '/collabTrain/date='+str((oldest - timedelta(i)))
         data1 = parquet.read_table(input_path + s, columns = ["instanceId_userId", "instanceId_objectId", 'feedback']).to_pandas()
         data1['dayofweek'] = str(dayofweek)
@@ -411,6 +449,7 @@ data_sample['liked'] = y.rename('liked').astype('Int16')
 
 #data = data_sample.sample(frac = 0.20, random_state=546789)
 data = data_sample
+
 
 concatdata = data["instanceId_userId"].apply(str) +'_'+ data["instanceId_objectId"].apply(str)
 concattest = test["instanceId_userId"].apply(str) +'_'+ test["instanceId_objectId"].apply(str)
@@ -436,7 +475,7 @@ result.head(10)
 submit = result.groupby("instanceId_userId")['instanceId_objectId'].apply(list)
 submit.head(10)
 # Persist the first submit
-submit.to_csv(output_path + "/collabSubmit.csv.gz", header = False, compression='gzip')   
+submit.to_csv(output_path + "/after_replace_collabSubmit.csv.gz", header = False, compression='gzip')   
 
 from sklearn.linear_model import Ridge
 ridgereg = Ridge(alpha=0.1,normalize=True)

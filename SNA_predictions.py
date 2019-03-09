@@ -434,7 +434,7 @@ for i in range(1,48):
     print(oldest - timedelta(i))
     day  = oldest - timedelta(i)
     dayofweek = day.weekday()
-    if (str((oldest - timedelta(i))) != '2018-02-11')&(str((oldest - timedelta(i))) != '2018-02-17')&(str((oldest - timedelta(i))) != '2018-02-18'):
+    if (str((oldest - timedelta(i))) != '2018-02-11'):
         s = '/collabTrain/date='+str((oldest - timedelta(i)))
         data1 = parquet.read_table(input_path + s, columns = ["instanceId_userId", "instanceId_objectId", 'feedback']).to_pandas()
         data1['dayofweek'] = str(dayofweek)

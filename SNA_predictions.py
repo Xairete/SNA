@@ -105,6 +105,7 @@ missing_columns = ['relationsMask', 'ownerUserCounters_PHOTO_PIN_UPDATE','owner_
          'auditweights_source_MOVIE_TOP', 'auditweights_userOwner_CREATE_IMAGE', 'auditweights_onlineVideo', 'auditweights_userOwner_VIDEO',
          'auditweights_friendCommentFeeds', 'auditweights_friendCommenters', 'auditweights_userOwner_UNKNOWN']
 
+
 select_list = list(set(all_list) - set(missing_columns)) 
 
 from datetime import date, timedelta, time
@@ -128,7 +129,8 @@ for i in range(1,21):
 feed = data_sample['feedback']
 
 y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
-['liked'] = y.rename('liked').astype('Int16')
+data_sample['liked'] = y.rename('liked').astype('Int16')
+data_sample = data_sample.drop(columns = 'feedback')
 
 data = data_sample.sample(frac = 0.20, random_state=546789)
 data = data_sample
@@ -194,9 +196,9 @@ missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
 
 data = data.drop(columns = list(missing_columns))
-#ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
-#data = data.drop(columns = ['audit_experiment','metadata_options','feedback','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
-#data.metadata_createdAt = pd.to_datetime(data.metadata_createdAt, unit='ms')
+ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
+data = data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
+data.metadata_createdAt = pd.to_datetime(data.metadata_createdAt, unit='ms')
 data = pd.get_dummies(data)
 # Fit the model and check the weight
 # Read the test data
@@ -290,8 +292,16 @@ t =pd.concat([data['auditweights_svd_spark'], data.label], axis = 1).corr()
 st = pd.concat([data['auditweights_svd_spark'], data['auditweights_svd_prelaunch'], data['auditweights_matrix'], data.label], axis = 1)
 
 data['label'] = y_all
-data['instanceId_userId'] = data_sample['instanceId_userId']
-data['instanceId_objectId'] = data_sample['instanceId_objectId']
+data['instanceId_userId'] = ids['instanceId_userId']
+data['instanceId_objectId'] = ids['instanceId_objectId']
+
+
+Xfilt = data.loc[~(data['userOwnerCounters_CREATE_LIKE'] > 8000)]
+Xfilt =Xfilt.loc[~(Xfilt['auditweights_ctr_high'] < 0)]
+
+
+metadata_numSymbols
+Xfilt['userOwnerCounters_CREATE_COMMENT'] = np.log(Xfilt['userOwnerCounters_CREATE_COMMENT']+1)
 
 Xfilt = data.loc[~(data['userOwnerCounters_VIDEO'] > 1000)]
 Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_IMAGE'] > 21000)]
@@ -308,6 +318,7 @@ Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_LIKE'] > 8000)]
 import seaborn as sns
 boxplot = data.hist(column=[ 'auditweights_likersSvd_spark_hyper'])
 
+#Xfilt = data
 X = Xfilt.fillna(0.0)
 T = test_data.fillna(0.0)
 
@@ -315,7 +326,7 @@ T = test_data.fillna(0.0)
 #T = test_data
 valid_data = X
 y = X['label']
-X = X.drop('label')
+X = X.drop(columns = 'label')
 
 feats = [f for f in X.columns if f not in ids]
 member_column_list = X.filter(regex='member', axis=1).columns.values.tolist() 
@@ -364,7 +375,7 @@ feats = [f for f in X.columns if f in support_feats]
 oof_preds = np.zeros(X.shape[0])
 sub_preds = np.zeros(T.shape[0])
 sub_valid = 0 
-from sklearn.linear_model import Ridge
+
 from lightgbm import LGBMClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score

@@ -300,20 +300,20 @@ Xfilt = data.loc[~(data['userOwnerCounters_CREATE_LIKE'] > 8000)]
 Xfilt =Xfilt.loc[~(Xfilt['auditweights_ctr_high'] < 0)]
 
 
-metadata_numSymbols
-Xfilt['userOwnerCounters_CREATE_COMMENT'] = np.log(Xfilt['userOwnerCounters_CREATE_COMMENT']+1)
-
-Xfilt = data.loc[~(data['userOwnerCounters_VIDEO'] > 1000)]
-Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_IMAGE'] > 21000)]
-Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_TEXT'] > 12500)]
-Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_COMMENT'] > 10000)]
-Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_TOPIC'] > 2000)]
-Xfilt =Xfilt.loc[~(Xfilt['auditweights_ctr_high'] < 0)]
-Xfilt =Xfilt.loc[~(Xfilt['auditweights_likersSvd_spark_hyper']>3)]
-Xfilt =Xfilt.loc[~(Xfilt['metadata_numPhotos'] > 150)]
-Xfilt =Xfilt.loc[~(Xfilt['metadata_totalVideoLength'] > 60000000)]
-Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_USER_FEED_REMOVE'] > 15000)]
-Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_LIKE'] > 8000)]
+#metadata_numSymbols
+#Xfilt['userOwnerCounters_CREATE_COMMENT'] = np.log(Xfilt['userOwnerCounters_CREATE_COMMENT']+1)
+#
+#Xfilt = data.loc[~(data['userOwnerCounters_VIDEO'] > 1000)]
+#Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_IMAGE'] > 21000)]
+#Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_TEXT'] > 12500)]
+#Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_COMMENT'] > 10000)]
+#Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_TOPIC'] > 2000)]
+#Xfilt =Xfilt.loc[~(Xfilt['auditweights_ctr_high'] < 0)]
+#Xfilt =Xfilt.loc[~(Xfilt['auditweights_likersSvd_spark_hyper']>3)]
+#Xfilt =Xfilt.loc[~(Xfilt['metadata_numPhotos'] > 150)]
+#Xfilt =Xfilt.loc[~(Xfilt['metadata_totalVideoLength'] > 60000000)]
+#Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_USER_FEED_REMOVE'] > 15000)]
+#Xfilt =Xfilt.loc[~(Xfilt['userOwnerCounters_CREATE_LIKE'] > 8000)]
 
 import seaborn as sns
 boxplot = data.hist(column=[ 'auditweights_likersSvd_spark_hyper'])

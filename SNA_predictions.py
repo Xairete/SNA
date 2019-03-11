@@ -142,35 +142,6 @@ data.day = pd.to_datetime(data.day)
 isweekend = pd.to_datetime(data.day).dt.dayofweek.apply(lambda x: 1.0 if(x==6 or x==5) else 0.0)
 data['isweekend'] = isweekend
 
-ducountlike = data[['day', 'liked']].groupby('day').sum()
-ducount = data[['day', 'instanceId_userId']].groupby('day').count()
-duunique = data[['day', 'instanceId_userId']].groupby('day').nunique()
-dudiv = duunique['instanceId_userId'].div( ducount['instanceId_userId']) 
-dulike = ducountlike['liked'].div( duunique['instanceId_userId']) 
-
-docount = data[['day', 'instanceId_objectId']].groupby('day').count()
-dounique = data[['day', 'instanceId_objectId']].groupby('day').nunique()
-dodiv = dounique['instanceId_objectId'].div( docount['instanceId_objectId']) 
-doudiv = dounique['instanceId_objectId'].div( duunique['instanceId_userId'])
-dolike = ducountlike['liked'].div( dounique['instanceId_objectId']) 
-
-concatdata = data_sample["instanceId_userId"].apply(str) +'_'+ data_sample["instanceId_objectId"].apply(str)
-uniqdata = concatdata.unique()
-from collections import Counter
-nonuniquedata = Counter(concatdata)
-numnonuniq = nonuniquedata.most_common(20)
-
-nudata_sample = data_sample[data_sample['instanceId_userId'] == 9063906]
-
-#---СОМНИТЕЛЬНАЯ ЧАСТЬ----------------------------------------------------
-#User_like_count = data[['liked','instanceId_userId']].groupby('instanceId_userId').count()
-#User_like_count['liked']=User_like_count['liked'].astype('Int16')
-#data = data.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
-#
-#Object_like_count = data[['liked','instanceId_objectId']].groupby('instanceId_objectId').count()
-#Object_like_count['liked']=Object_like_count['liked'].astype('Int16')
-#data = data.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
-
 #________________________________________________________________
 
 User_Object_count = data[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
@@ -180,32 +151,58 @@ Object_User_count = Object_User_count.rename(columns = {'instanceId_userId':'Obj
 data = data.join(User_Object_count, on = 'instanceId_userId')
 data = data.join(Object_User_count, on = 'instanceId_objectId')
 
-#data = data.drop(columns =['User_Object_count'])
-
-#Object_like_persent =Object_like_count.rename(columns = {'liked':'Like_Persent'})
-#Object_like_persent['Like_Persent'] =Object_like_persent['Like_Persent'] / Object_User_count['Object_User_counter']
-#data = data.join(Object_like_persent, on = 'instanceId_objectId')
-
 data = data.drop(columns =['liked'])
 
 data.info(max_cols=170)
-data_20 = data.head(20)
+data_20 = data.head(50)
 
 missing = missing_values_table(data)
 missing_columns = list(missing[missing['% of Total Values'] > 99].index)
 print('We will remove %d columns.' % len(missing_columns))
 
+option = data.metadata_options.apply(lambda x: 1.0 if("HAS_TEXT" in x) else 0.0)
+data['HAS_TEXT'] = option
+sum_of_option = option
+option = data.metadata_options.apply(lambda x: 1.0 if("HAS_PHOTOS" in x) else 0.0)
+data['HAS_PHOTOS'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("HAS_POLLS" in x) else 0.0)
+data['HAS_POLLS'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("HAS_VIDEOS" in x) else 0.0)
+data['HAS_VIDEOS'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("HAS_URLS" in x) else 0.0)
+data['HAS_URLS'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("IS_PART_OF_ALBUM" in x) else 0.0)
+data['IS_PART_OF_ALBUM'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("IS_PART_OF_TOPIC" in x) else 0.0)
+data['IS_PART_OF_TOPIC'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("IS_EXTERNAL_SHARE" in x) else 0.0)
+data['IS_EXTERNAL_SHARE'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("IS_INTERNAL_SHARE" in x) else 0.0)
+data['IS_INTERNAL_SHARE'] = option
+sum_of_option += option
+option = data.metadata_options.apply(lambda x: 1.0 if("HAS_DETECTED_TEXT" in x) else 0.0)
+data['HAS_DETECTED_TEXT'] = option
+sum_of_option += option
+data['sum_of_options'] = sum_of_option 
+
 data = data.drop(columns = list(missing_columns))
 ids = data[['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']]
 data = data.drop(columns = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed'])
-data.metadata_createdAt = pd.to_datetime(data.metadata_createdAt, unit='ms')
+#data.metadata_createdAt = pd.to_datetime(data.metadata_createdAt, unit='ms')
 data = pd.get_dummies(data)
+#_____________________________________________________________________________
 # Fit the model and check the weight
 # Read the test data
 test = parquet.read_table(input_path + '/collabTest', columns = list(set(select_list)|set(['date']))).to_pandas()
 test.head(10)
-#test = test.join(User_like_count.rename(columns = {'liked':'User_like_count'}), on = 'instanceId_userId')
-#test = test.join(Object_like_count.rename(columns = {'liked':'Object_like_count'}), on = 'instanceId_objectId')
+
 User_Object_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_userId').count().astype('Int16')
 Object_User_count = test[['instanceId_userId','instanceId_objectId']].groupby('instanceId_objectId').count().astype('Int16')
 User_Object_count = User_Object_count.rename(columns = {'instanceId_objectId':'User_Object_count'})
@@ -220,17 +217,40 @@ test['day'] = test_date
 isweekend = pd.to_datetime(test.day).dt.dayofweek.apply(lambda x: 1.0 if(x==6 or x==5) else 0.0)
 test['isweekend'] = isweekend
 
-testducount = test[['day', 'instanceId_userId']].groupby('day').count()
-testduunique = test[['day', 'instanceId_userId']].groupby('day').nunique()
-testdudiv = testduunique['instanceId_userId'].div( testducount['instanceId_userId']) 
-
-testdocount = test[['day', 'instanceId_objectId']].groupby('day').count()
-testdounique = test[['day', 'instanceId_objectId']].groupby('day').nunique()
-testdodiv = testdounique['instanceId_objectId'].div( testdocount['instanceId_objectId']) 
-testdoudiv = testdounique['instanceId_objectId'].div( testduunique['instanceId_userId'])
+option = test.metadata_options.apply(lambda x: 1.0 if("HAS_TEXT" in x) else 0.0)
+test['HAS_TEXT'] = option
+sum_of_option = option
+option = test.metadata_options.apply(lambda x: 1.0 if("HAS_PHOTOS" in x) else 0.0)
+test['HAS_PHOTOS'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("HAS_POLLS" in x) else 0.0)
+test['HAS_POLLS'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("HAS_VIDEOS" in x) else 0.0)
+test['HAS_VIDEOS'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("HAS_URLS" in x) else 0.0)
+test['HAS_URLS'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("IS_PART_OF_ALBUM" in x) else 0.0)
+test['IS_PART_OF_ALBUM'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("IS_PART_OF_TOPIC" in x) else 0.0)
+test['IS_PART_OF_TOPIC'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("IS_EXTERNAL_SHARE" in x) else 0.0)
+test['IS_EXTERNAL_SHARE'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("IS_INTERNAL_SHARE" in x) else 0.0)
+test['IS_INTERNAL_SHARE'] = option
+sum_of_option += option
+option = test.metadata_options.apply(lambda x: 1.0 if("HAS_DETECTED_TEXT" in x) else 0.0)
+test['HAS_DETECTED_TEXT'] = option
+sum_of_option += option
+test['sum_of_options'] = sum_of_option 
 
 test = test.drop(columns = 'date')
-test.metadata_createdAt = pd.to_datetime(test.metadata_createdAt, unit='ms')
+#test.metadata_createdAt = pd.to_datetime(test.metadata_createdAt, unit='ms')
 test_data = test #.drop(columns = list(missing_columns))
 
 ids_list = ['audit_experiment','metadata_options','instanceId_userId', 'instanceId_objectId', 'audit_timestamp', 'audit_timePassed']
@@ -238,17 +258,11 @@ test_data = test_data.drop(columns = ['audit_experiment','metadata_options','ins
 
 test_data = pd.get_dummies(test_data)
 
-concattest = test["instanceId_userId"].apply(str) + test["instanceId_objectId"].apply(str)
-uniq = concattest.unique()
-from collections import Counter
-nonunique = Counter(concattest)
-nunnonuniq = nonunique.most_common(558)
-
 print('Training Features shape: ', data.shape)
 print('Testing Features shape: ', test_data.shape)
 data.info(max_cols=210)
 test_data.info(max_cols=210)
-
+data['label'] = y_all
 corr_koef = data.corr()
 field_drop = [i for i in corr_koef if corr_koef[i].isnull().drop_duplicates().values[0]]
 cor_field = []
@@ -259,15 +273,15 @@ for i in corr_koef:
             print ("%s-->%s: r^2=%f" % (i,j, corr_koef[i][corr_koef.index==j].values[0]))
             
 field_drop =field_drop + cor_field
-field_drop = ['metadata_applicationId', 'userOwnerCounters_USER_PROFILE_VIEW', 'userOwnerCounters_VOTE_POLL', 'userOwnerCounters_USER_SEND_MESSAGE',
- 'userOwnerCounters_USER_DELETE_MESSAGE', 'userOwnerCounters_USER_INTERNAL_LIKE', 'userOwnerCounters_USER_INTERNAL_UNLIKE',
- 'userOwnerCounters_USER_STATUS_COMMENT_CREATE', 'userOwnerCounters_PHOTO_COMMENT_CREATE', 'userOwnerCounters_MOVIE_COMMENT_CREATE',
- 'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE', 'userOwnerCounters_COMMENT_INTERNAL_LIKE',
- 'userOwnerCounters_USER_FORUM_MESSAGE_CREATE', 'userOwnerCounters_PHOTO_MARK_CREATE',
- 'userOwnerCounters_PHOTO_VIEW', 'userOwnerCounters_PHOTO_PIN_BATCH_CREATE', 'userOwnerCounters_PHOTO_PIN_UPDATE', 'userOwnerCounters_USER_PRESENT_SEND', 'auditweights_hasText',
- 'auditweights_isRandom', 'auditweights_notOriginalPhoto', 'auditweights_processedVideo',
- 'metadata_numTokens', 'membership_joinDate', 'membership_joinRequestDate',
- 'auditweights_userAge', 'metadata_ownerType_GROUP_OPEN_OFFICIAL']
+field_drop = ['auditweights_isRandom', 'userOwnerCounters_USER_PRESENT_SEND', 'auditweights_hasText',
+             'userOwnerCounters_USER_STATUS_COMMENT_CREATE', 'auditweights_notOriginalPhoto', 'userOwnerCounters_PHOTO_PIN_BATCH_CREATE',
+             'userOwnerCounters_VOTE_POLL', 'userOwnerCounters_MOVIE_COMMENT_CREATE', 'userOwnerCounters_PHOTO_PIN_UPDATE',
+             'userOwnerCounters_COMMENT_INTERNAL_LIKE', 'userOwnerCounters_USER_INTERNAL_LIKE', 'userOwnerCounters_USER_DELETE_MESSAGE',
+             'userOwnerCounters_USER_PHOTO_ALBUM_COMMENT_CREATE', 'userOwnerCounters_PHOTO_COMMENT_CREATE', 'userOwnerCounters_USER_SEND_MESSAGE',
+             'userOwnerCounters_USER_PROFILE_VIEW', 'metadata_applicationId', 'auditweights_processedVideo',
+             'userOwnerCounters_PHOTO_VIEW', 'userOwnerCounters_USER_INTERNAL_UNLIKE', 'userOwnerCounters_USER_FORUM_MESSAGE_CREATE',
+             'userOwnerCounters_PHOTO_MARK_CREATE', 'membership_joinRequestDate', 'membership_statusUpdateDate', 'metadata_numTokens',
+             'user_birth_date', 'HAS_POLLS', 'instanceId_objectType_Post', 'metadata_ownerType_GROUP_OPEN_OFFICIAL']
 train_list = data.columns.values.tolist() 
 test_list = test_data.columns.values.tolist() 
 for j in test_list:
@@ -280,16 +294,6 @@ data = data.drop(columns = 'membership_status_R')
 corr = data.corr().ix['label', :-1]
 import matplotlib.pyplot as plt
 plt.hist(data['auditweights_svd_prelaunch'].fillna(-1), 20)
-plt.hist(data['auditweights_svd_spark'].fillna(-1), 20)
-plt.hist(matrix, 50)
-matrix =  np.log(data['auditweights_matrix']+1)
-plt.hist(test_data['auditweights_svd_prelaunch'], 20)
-
-multy_data = data['auditweights_svd_prelaunch'].fillna(1)*data['auditweights_svd_spark'].fillna(1)*data['auditweights_matrix'].fillna(1)
-plt.hist(multy_data, 20)
-multy = pd.concat([multy_data, data['label']], axis=1)
-t =pd.concat([data['auditweights_svd_spark'], data.label], axis = 1).corr()
-st = pd.concat([data['auditweights_svd_spark'], data['auditweights_svd_prelaunch'], data['auditweights_matrix'], data.label], axis = 1)
 
 data['label'] = y_all
 data['instanceId_userId'] = ids['instanceId_userId']
@@ -365,7 +369,10 @@ support_feats = ['audit_pos','audit_resourceType', 'metadata_ownerId', 'metadata
                  'User_Object_count', 'Object_User_counter', 'audit_clientType_API',
                  'audit_clientType_MOB', 'audit_clientType_WEB',
                  'metadata_ownerType_GROUP_OPEN', 'metadata_platform_ANDROID',
-                 'metadata_platform_OTHER', 'metadata_platform_WEB', 'membership_status_A']
+                 'metadata_platform_OTHER', 'metadata_platform_WEB', 'membership_status_A' #]
+                 ,'HAS_TEXT', 'HAS_PHOTOS', 'HAS_VIDEOS', 'HAS_URLS','IS_PART_OF_ALBUM', 'IS_PART_OF_TOPIC', 'IS_EXTERNAL_SHARE','IS_INTERNAL_SHARE','HAS_DETECTED_TEXT', 'sum_of_options']
+                 
+
 X = X.drop(columns = ['day', 'metadata_createdAt'])
 
 import time
@@ -386,7 +393,7 @@ for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
 
         clf = LGBMClassifier(
                     boosting_type = 'gbdt', 
-                    n_estimators=1000, 
+                    n_estimators=2000, 
                     learning_rate=0.1, 
                     reg_alpha=.1, 
                     reg_lambda=.03, 

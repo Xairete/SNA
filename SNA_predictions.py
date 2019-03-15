@@ -303,12 +303,12 @@ data['instanceId_objectId'] = ids['instanceId_objectId']
 Xfilt = data.loc[~(data['userOwnerCounters_CREATE_LIKE'] > 8000)]
 Xfilt =Xfilt.loc[~(Xfilt['auditweights_ctr_high'] < 0)]
 Xfilt['auditweights_likersSvd_spark_hyper'] = Xfilt['auditweights_likersSvd_spark_hyper'].fillna(Xfilt['auditweights_likersSvd_spark_hyper'].median())
-Xfilt['auditweights_svd_spark'] = Xfilt['auditweights_svd_spark'].fillna(Xfilt['auditweights_svd_spark'].median())
-Xfilt['auditweights_ctr_high'] = Xfilt['auditweights_ctr_high'].fillna(Xfilt['auditweights_ctr_high'].median())
+#Xfilt['auditweights_svd_spark'] = Xfilt['auditweights_svd_spark'].fillna(Xfilt['auditweights_svd_spark'].median())
+#Xfilt['auditweights_ctr_high'] = Xfilt['auditweights_ctr_high'].fillna(Xfilt['auditweights_ctr_high'].median())
 
 test_data['auditweights_likersSvd_spark_hyper'] = test_data['auditweights_likersSvd_spark_hyper'].fillna(test_data['auditweights_likersSvd_spark_hyper'].median())
-test_data['auditweights_svd_spark'] = test_data['auditweights_svd_spark'].fillna(test_data['auditweights_svd_spark'].median())
-test_data['auditweights_ctr_high'] = test_data['auditweights_ctr_high'].fillna(test_data['auditweights_ctr_high'].median())
+#test_data['auditweights_svd_spark'] = test_data['auditweights_svd_spark'].fillna(test_data['auditweights_svd_spark'].median())
+#test_data['auditweights_ctr_high'] = test_data['auditweights_ctr_high'].fillna(test_data['auditweights_ctr_high'].median())
 
 
 #metadata_numSymbols
@@ -387,7 +387,7 @@ X = X.drop(columns = ['day', 'metadata_createdAt'])
 import time
 T = T.drop(columns = ['day', 'metadata_createdAt'])
 
-runs = 1 #6
+runs = 7 #6
 #feats = data.columns.values.tolist() 
 feats = [f for f in X.columns if f in support_feats]
 oof_preds = np.zeros((runs, X.shape[0]))
@@ -400,46 +400,47 @@ from sklearn.metrics import roc_auc_score
 folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=546789)
 
 for i in range(runs):
-        for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
-                train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
-                val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
-        
-                clf = LGBMClassifier(
-                            boosting_type = 'gbdt', 
-                            n_estimators=2000, 
-                            learning_rate=0.1, 
-                            reg_alpha=.1, 
-                            reg_lambda=.03, 
-                            min_split_gain=.01, 
-                            min_child_weight=16, 
-                            silent=-1, 
-                            verbose=-1,
-                            random_state=546789-100*i
-                            )
-                clf.fit(train_x, train_y, 
-                            eval_set= [(train_x, train_y), (val_x, val_y)], 
-                            eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
-                           )
-                oof_preds[i, val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
-                sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
-                sub_valid_data['score'] = oof_preds[i, val_idx]        
+    print(i)
+    for n_fold, (train_idx, val_idx) in enumerate(folds.split(X, y)):
+            train_x, train_y = X[feats].iloc[train_idx], y.iloc[train_idx]
+            val_x, val_y = X[feats].iloc[val_idx], y.iloc[val_idx]
+    
+            clf = LGBMClassifier(
+                        boosting_type = 'gbdt', 
+                        n_estimators=2200, 
+                        learning_rate=0.1, 
+                        reg_alpha=.1, 
+                        reg_lambda=.03, 
+                        min_split_gain=.01, 
+                        min_child_weight=16, 
+                        silent=-1, 
+                        verbose=-1,
+                        random_state=546789+i*10
+                        )
+            clf.fit(train_x, train_y, 
+                        eval_set= [(train_x, train_y), (val_x, val_y)], 
+                        eval_metric='auc', verbose=100, early_stopping_rounds=30  #30
+                       )
+            oof_preds[i, val_idx] = clf.predict_proba(val_x, num_iteration=clf.best_iteration_)[:, 1]
+            sub_valid_data = valid_data[["instanceId_userId", "instanceId_objectId", 'label']].iloc[val_idx]
+            sub_valid_data['score'] = oof_preds[i, val_idx]        
+            
+            sub_valid += sub_valid_data.groupby("instanceId_userId").apply(lambda y: auc(y.label.values, y.score.values)).dropna().mean()
                 
-                sub_valid += sub_valid_data.groupby("instanceId_userId").apply(lambda y: auc(y.label.values, y.score.values)).dropna().mean()
-                    
-                #print('Sub AUC : %.6f' % sub_valid)
-                sub_preds[i, :] -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
-        
-                fold_importance = pd.DataFrame()
-                fold_importance["feature"] = feats
-                fold_importance["importance"] = clf.feature_importances_
-                fold_importance["fold"] = n_fold + 1
-                
-                print('Fold %2d AUC : %.6f' % (n_fold + 1, roc_auc_score(val_y, oof_preds[i, val_idx])))
-                del  train_x, train_y, val_x, val_y, clf
-                gc.collect()
+            #print('Sub AUC : %.6f' % sub_valid)
+            sub_preds[i, :] -= clf.predict_proba(T[feats], num_iteration=clf.best_iteration_)[:, 1] / folds.n_splits
+    
+            fold_importance = pd.DataFrame()
+            fold_importance["feature"] = feats
+            fold_importance["importance"] = clf.feature_importances_
+            fold_importance["fold"] = n_fold + 1
+            
+            print('Fold %2d AUC : %.6f' % (n_fold + 1, roc_auc_score(val_y, oof_preds[i, val_idx])))
+            del  train_x, train_y, val_x, val_y, clf
+            gc.collect()
 
 print('Full AUC score %.6f' % roc_auc_score(y, oof_preds.mean(axis = 0)))  
-print('Full AUC score %.6f' % (sub_valid/(5)))  
+print('Full AUC score %.6f' % (sub_valid/(5*runs)))  
 
 valid_data['score'] = oof_preds.mean(axis = 0)
 
@@ -477,15 +478,15 @@ y = feed.apply(lambda x: 1.0 if("Liked" in x) else 0.0)
 data_sample['liked'] = y.rename('liked').astype('Int16')
 
 #data = data_sample.sample(frac = 0.20, random_state=546789)
-data = data_sample
+data_fill = data_sample
 
 
-concatdata = data["instanceId_userId"].apply(str) +'_'+ data["instanceId_objectId"].apply(str)
+concatdata = data_fill["instanceId_userId"].apply(str) +'_'+ data_fill["instanceId_objectId"].apply(str)
 concattest = test["instanceId_userId"].apply(str) +'_'+ test["instanceId_objectId"].apply(str)
 d = pd.Series(list(set(concatdata) & set(concattest)))
-data['concatdata'] = concatdata
+data_fill['concatdata'] = concatdata
 test['concattest'] = concattest
-data_concat = (data[['concatdata', 'liked']].groupby('concatdata').median())
+data_concat = (data_fill[['concatdata', 'liked']].groupby('concatdata').median())
 test1 = test[['concattest',"predictions"]]
 w = test1.join(data_concat, how='left', on='concattest')
 w.liked.fillna(w.predictions, inplace=True)
